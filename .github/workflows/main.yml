@@ -24,17 +24,3 @@ jobs:
         uses: fuxingloh/multi-labeler@v4
         with:
           github-token: ${{secrets.GITHUB_TOKEN}}
-
-      - name: changed_files
-        id: changed-files
-        uses: tj-actions/changed-files@v35
-        with:
-          github-token: ${{secrets.GITHUB_TOKEN}}
-          files: |
-            **/*.cpp
-            **/*.h
-            **/*.hpp
-            **/*.c
-            **/*.cc
-            **/*.cxx
-          separator: ","
