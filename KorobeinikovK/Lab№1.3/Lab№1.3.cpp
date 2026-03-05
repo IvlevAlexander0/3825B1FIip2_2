@@ -5,7 +5,7 @@ using std::cin;
 class Time {
 private:
 unsigned int hours, minutes, seconds;
-bool Err(int h, int m, int s) const {
+bool Err(unsigned int h, unsigned int m, unsigned int s) const {
 	return (h >= 0 && h < 24) && (m >= 0 && m < 60) && (s >= 0 && s < 60);
 }
 void norm() {
@@ -19,25 +19,25 @@ void norm() {
 	seconds = allsec % 60;
 }
 public:
-	Time(int h = 0, int m = 0, int s = 0) :hours(h), minutes(m), seconds(s) {
-		if (!Err(h, m, s)) {
-			cout << "Error:incorrect time" << '\n';
-			cout << "Repeat input" << '\n';
-			cout << "Hours: ";
+	Time(unsigned int h = 0, unsigned int m = 0, unsigned int s = 0) :hours(h), minutes(m), seconds(s) {
+		while (!Err(h, m, s)) {
+			cout << "Error: incorrect time\n";
+			cout << "Repeat input\n";
+			cout << "Hours: ";   
 			cin >> h;
-			cout << "Minutes: ";
+			cout << "Minutes: "; 
 			cin >> m;
-			cout << "seconds: ";
+			cout << "Seconds: "; 
 			cin >> s;
 		}
 		hours = h;
 		minutes = m;
 		seconds = s;
 	};
-	void SetTime(int h, int m, int s) {
-		if (!Err(h, m, s)) {
-			cout << "Error:incorrect time" << '\n';
-			cout << "Repeat input" << '\n';
+	void SetTime(unsigned int h, unsigned int m, unsigned int s) {
+		while (!Err(h, m, s)) {
+			cout << "Error:incorrect time\n";
+			cout << "Repeat input\n";
 			cout << "Hours: ";
 			cin >> h;
 			cout << "Minutes: ";
@@ -87,13 +87,13 @@ public:
 		}
 		cout << s << '\n';
 	}
-	void add(int h, int m, int s) {
+	void add(unsigned int h, unsigned int m, unsigned int s) {
 		hours += h;
 		minutes += m;
 		seconds += s;
 		norm();
 	}
-	void sub(int h, int m, int s) {
+	void sub(unsigned int h, unsigned int m, unsigned int s) {
 		hours -= h;
 		minutes -= m;
 		seconds -= s;
@@ -101,8 +101,9 @@ public:
 	}
 };
 int main() {
-	int ch, h, m, s;
-	cout << "=== Working with time ===" << '\n';
+	int ch;
+	unsigned int h, m, s;
+	cout << "=== Working with time ===\n";
 	cout << "Hours: ";
 	cin >> h;
 	cout << "Minutes: ";
@@ -111,13 +112,13 @@ int main() {
 	cin >> s;
 	Time t1(h, m, s);
 	do {
-		cout << "Menu:" << '\n';
-		cout << "1.Show current time" << '\n';
-		cout << "2.Set a new time" << '\n';
-		cout << "3.Calculate the time difference" << '\n';
-		cout << "4.Add shift" << '\n';
-		cout << "5.Subtract shift" << '\n';
-		cout << "0.exit" << '\n';
+		cout << "Menu:\n";
+		cout << "1.Show current time\n";
+		cout << "2.Set a new time\n";
+		cout << "3.Calculate the time difference\n";
+		cout << "4.Add shift\n";
+		cout << "5.Subtract shift\n" ;
+		cout << "0.exit\n" ;
 		cout << "Select an action: ";
 		cin >> ch;
 		switch (ch) {
@@ -128,7 +129,7 @@ int main() {
 			break;
 
 		case 2: {
-			cout << "Enter a new time:"<<'\n';
+			cout << "Enter a new time:\n";
 			cout << "Hours: ";
 			cin >> h;
 			cout << "Minutes: ";
@@ -143,7 +144,7 @@ int main() {
 		}
 
 		case 3: {
-			cout << "Enter time to compare:"<<'\n';
+			cout << "Enter time to compare:\n";
 			cout << "Hours: ";
 			cin >> h;
 			cout << "Minutes: ";
@@ -158,7 +159,7 @@ int main() {
 		}
 
 		case 4: {
-			cout << "Enter shift:"<<'\n';
+			cout << "Enter shift:\n";
 			cout << "Hours: ";
 			cin >> h;
 			cout << "Minutes: ";
@@ -173,7 +174,7 @@ int main() {
 		}
 
 		case 5: {
-			cout << "Enter shift:"<<'\n';
+			cout << "Enter shift:\n";
 			cout << "Hours: ";
 			cin >> h;
 			cout << "Minutes: ";
@@ -187,11 +188,11 @@ int main() {
 			break;
 		}
 		case 0:
-			cout << "End"<<'\n';
+			cout << "End\n";
 			break;
 
 		default:
-			cout << "Incorrect selection. Try again"<<'\n';
+			cout << "Incorrect selection. Try again\n";
 		}
 	} while (ch != 0);
 }
