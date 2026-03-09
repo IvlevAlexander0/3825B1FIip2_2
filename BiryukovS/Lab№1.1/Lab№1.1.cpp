@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cmath>
 
 class Number {
 private:
@@ -6,23 +7,51 @@ private:
 	int b;
 public:
 	Number() : a(0), b(1) {}
-	void reduce() {
-		for (int i = 2; i < 10; ++i) {
-			if (a % i == 0 and b % i == 0) {
-				while (a % i == 0 and b % i == 0) {
-					a = a / i;
-					b = b / i;
-				}
+	int evclid() const {
+		int nod = 0;
+		int cb = b;
+		int ca = a;
+		cb = std::abs(cb);
+		ca = std::abs(ca);
+		if (ca <= cb) {
+			while (cb % ca != 0) {
+				int temp = cb;
+				cb = ca;
+				ca = temp % ca;
 			}
+			nod = ca;
 		}
+		else {
+			while (ca % cb != 0) {
+				int temp = ca;
+				ca = cb;
+				cb = temp % cb;
+			}
+			nod = cb;
+		}
+		return nod;
+	}
+	void reduce() {
+		int nod = evclid();
+		a = a / nod;
+		b = b / nod;
+		if (b < 0) {
+			a = -a;
+			b = -b;
+		}
+	}
+	void print() const {
+		std::cout << "The number is " << a << '/' << b << '\n';
 	}
 	void scan() {
 		while (true) {
 			std::cout << "Enter numerator and denominator\n";
 			std::cin >> a >> b;
+			
 			if (b == 0) {
 				std::cout << "Error: the denomirator cannot be 0\n" << "Try again\n";
 			}
+			
 			else {
 				break;
 			}
@@ -50,6 +79,7 @@ public:
 			a = a + newa;
 		}
 		reduce();
+		print();
 	}
 	void dif() {
 		int newa = 0;
@@ -72,6 +102,7 @@ public:
 			a = a - newa;
 		}
 		reduce();
+		print();
 	}
 	void mult() {
 		int newa = 0;
@@ -86,13 +117,10 @@ public:
 				break;
 			}
 		}
-		if (newb == 0) {
-			std::cout << "The denomirator cannot be 0\n";
-		}
-		else {
-			a = a * newa;
-			b = b * newb;
-		}
+		a = a * newa;
+		b = b * newb;
+		reduce();
+		print();
 	}
 	void div() {
 		int newa = 0;
@@ -114,14 +142,14 @@ public:
 			a = a * newb;
 			b = b * newa;
 		}
+		reduce();
+		print();
 	}
-	void print() {
-		std::cout << "The number is " << a << '/' << b << '\n';
-	}
+	
 };
 void menu() {
 	using std::cout;
-	cout << '\n'<< "Choose the operation:\n" << "1 - to enter number\n" << "2 - to print the number\n" << "3 - to add a fraction\n" << "4 - to substract a fraction\n";
+	cout << '\n' << "Choose the operation:\n" << "1 - to enter number\n" << "2 - to print the number\n" << "3 - to add a fraction\n" << "4 - to substract a fraction\n";
 	cout << "5 - to multiply by a fraction\n" << "6 - to divide by a fraction\n" << "7 - Exit the programm\n" << '\n';
 }
 int main() {
@@ -130,8 +158,7 @@ int main() {
 	cout << "Welcome to calculator for fractions!!!\n";
 	menu();
 	Number A;
-	int flag = 0;
-	while (flag == 0) {
+	while (true) {
 		while (true) {
 			std::cin >> mode;
 			if (mode >= 1 && mode <= 7) {
@@ -168,7 +195,8 @@ int main() {
 			menu();
 			break;
 		case 7:
-			++flag;
+			return 0;
+			break;
 		}
 	}
 }
