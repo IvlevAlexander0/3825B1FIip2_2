@@ -1,70 +1,153 @@
 #include <iostream>
 
-using namespace std;
+using std::cin, std::cout, std::ostream;
+using ull = unsigned long long;
 
 class LongNum {
 private:
-    // hi, lo - интерпритация верхних и нижних 32 бит соответственно
-    unsigned int lo; 
+    unsigned int lo;
     unsigned int hi; 
 
-    const long long base = 4294967296; // константа 2^32
-
-    __int64 toInt64() const {
-        // умножение на base ~ сдвигу на 32 бита влево
-        return (__int64)(int)hi * base + (unsigned __int64)lo;
+    void fromBits(ull other) {
+        hi = (unsigned int) (other >> 32);
+        lo = (unsigned int)(other & 0xFFFFFFFF);
+    }
+    
+    LongNum shl1() const {
+        unsigned int bit = lo >> 31;
+        return LongNum((hi << 1) | bit, lo << 1);
     }
 
-    void fromInt64(__int64 val) {
-        // беззнаковое деление даёт правильные биты для отрицательных чисел
-        unsigned __int64 uval = (unsigned __int64)val; 
-        unsigned __int64 ubase = (unsigned __int64)base;
-        lo = (unsigned int)(uval % ubase); 
-        hi = (unsigned int)(uval / ubase);
+    LongNum shr1() const {
+        unsigned int bit = hi << 31;
+        return LongNum(hi >> 1, (lo >> 1) | bit);
+    }
+
+    bool isNegative() const {
+        return (hi >> 31) != 0;
+    }
+
+    bool isZero() const {
+        return hi == 0 && lo == 0;
+    }
+    
+    LongNum negate() const {
+        unsigned int n = ~lo + 1; 
+        return LongNum(~hi + (lo == 0), n);
+    }
+
+    LongNum absVal()  const { 
+        return isNegative() ? negate() : *this; 
+    }
+
+    bool unsignedLess(const LongNum& b) const {
+        return hi != b.hi ? hi < b.hi : lo < b.lo;
+    }
+
+    LongNum udiv(const LongNum& a, const LongNum& b, LongNum& rem) const {
+        LongNum q(0);
+        rem = LongNum(0);
+
+        for (int i = 63; i >= 0; i--) {
+            // Сдвигаем остаток влево — освобождаем место для нового бита
+            rem = rem.shl1();
+
+            // Берём i-й бит делимого и дописываем его в младший бит остатка
+            unsigned int bit;
+            if (i >= 32)
+                bit = (a.hi >> (i - 32)) & 1u; // бит из старшей половины
+            else
+                bit = (a.lo >> i) & 1u; // бит из младшей половины
+            rem.lo |= bit;
+
+            if (!rem.unsignedLess(b)) {
+                rem = rem - b;
+                if (i >= 32)
+                    q.hi |= 1u << (i - 32); // записываем 1 в i-й бит частного
+                else
+                    q.lo |= 1u << i;
+            }
+        }
+        return q;
     }
 
     public:
+
     LongNum() : lo(0), hi(0) {} 
 
-    LongNum(__int64 val) {
-        fromInt64(val);
+    LongNum(unsigned int h, unsigned int l): hi(h), lo(l) {}
+
+    LongNum(int val): lo((unsigned int)val), hi((unsigned int)(val >> 31)) {}
+
+    LongNum(long long val) { 
+        fromBits((ull)val); 
     }
 
-    LongNum(unsigned int high, unsigned int low): hi(high), lo(low) {}
-
-    // перегрузка всех 5 операторов для работы с LongNum
-
-    LongNum operator+(const LongNum& other) const {
-        __int64 result = toInt64() + other.toInt64();
-        return LongNum(result);
+    LongNum operator+(const LongNum& b) const {
+        unsigned int new_lo = lo + b.lo;
+        unsigned int carry  = (new_lo < lo) ? 1u : 0u;
+        return LongNum(hi + b.hi + carry, new_lo);
     }
 
-    LongNum operator-(const LongNum& other) const {
-        return LongNum(toInt64() - other.toInt64());
+    LongNum operator-(const LongNum& b) const {
+        unsigned int borrow = (lo < b.lo) ? 1u : 0u;
+        return LongNum(hi - b.hi - borrow, lo - b.lo);
     }
 
-    LongNum operator*(const LongNum& other) const {
-        return LongNum(toInt64() * other.toInt64());
+    // бинарное умножение
+    LongNum operator*(const LongNum& b) const {
+
+    LongNum result(0);
+    LongNum shifted = *this;
+    LongNum mult = b; 
+
+    for (int i = 0; i < 64; i++) {
+        if (mult.lo & 1u) {  // если младший бит множителя равен 1
+            result = result + shifted;
+        }          
+        shifted = shifted.shl1();  // удваиваем слагаемое
+        mult = mult.shr1();  // переходим к следующему биту множителя
+    }    
+        return result;
     }
 
-    LongNum operator/(const LongNum& other) const {
-        return LongNum(toInt64() / other.toInt64());
+    LongNum operator/(const LongNum& b) const {
+        bool neg = isNegative() != b.isNegative();
+        LongNum rem, q = udiv(absVal(), b.absVal(), rem);
+        return (neg && !q.isZero()) ? q.negate() : q;
     }
 
-    LongNum operator%(const LongNum& other) const {
-        return LongNum(toInt64() % other.toInt64());
+    LongNum operator%(const LongNum& b) const {
+        LongNum rem;
+        udiv(absVal(), b.absVal(), rem);
+        return (isNegative() && !rem.isZero()) ? rem.negate() : rem;
     }
 
-    // перегрузка оператора вывода для объектов класса LongNum
-    friend ostream& operator<<(ostream& os, const LongNum& num) {
-        os << num.toInt64();
+    friend ostream& operator<<(ostream& os, const LongNum& n) {
+        if (n.isZero())     return os << '0';
+        if (n.isNegative()) return os << '-' << n.negate();
+
+        // Получаем цифры числа делением на 10, накапливаются в обратном порядке
+        char buf[20];
+        int len = 0;
+        LongNum cur = n;
+        LongNum ten(10);
+
+        while (!cur.isZero()) {
+            buf[len++] = '0' + (cur % ten).lo;  // последняя цифра -> символ
+            cur = cur / ten;
+        }
+
+        for (int i = len - 1; i >= 0; i--)
+            os << buf[i];
+
         return os;
     }
 };
 
 int main() {
-    LongNum Num1(11 * (__int64)1000000000); 
-    LongNum Num2(6 * (__int64)1000000000); 
+    LongNum Num1(11 * 1000000000LL); 
+    LongNum Num2(6 * 1000000000LL); 
 
     cout << "Num1 = " << Num1 << '\t' << "Num2 = " << Num2 << '\n' << '\n';
     cout << "Num1 + Num2 = " << (Num1 + Num2) << '\n';
