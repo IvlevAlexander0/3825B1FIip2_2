@@ -1,12 +1,10 @@
 #include <iostream>
 #include <string>
-#include <vector>
 #include <fstream>
 
 using std::string;
 using std::cin;
 using std::cout;
-using std::vector;
 using std::cerr;
 using std::getline;
 
@@ -42,15 +40,25 @@ public:
 };
 class Dictionary {
 private:
-	vector<Trans> rec;
+	Trans* data;
+	size_t count;
 	int findEng(const string& en) const {
-		for (size_t i = 0; i < rec.size(); ++i) {
-			if (rec[i].GetEng() == en) {
-				return i;
+		for (size_t i = 0; i < count; ++i) {
+			if (data[i].GetEng() == en) {
+				return static_cast<int>(i);
 			}
 		}
 		return -1;
 	}
+	void addEnt(const Trans& ent) {
+		Trans* nData = new Trans[count + 1];
+		for (size_t i = 0; i < count; ++i) nData[i] = data[i];
+		nData[count] = ent;
+		delete[] data;
+		data = nData;
+		++count;
+	}
+
 	bool promt(const string& word, bool isEng) {
 		cout << "Word:" << word << '\n' << "Not found. Add it to the dictionary? (y/n):";
 		char an;
@@ -60,11 +68,11 @@ private:
 			string tr;
 			if (isEng) {
 				tr = safeInpStr("Enter the translation in Russian:");
-				rec.push_back(Trans(word, tr));
+				addEnt(Trans(word,tr));
 			}
 			else{
 				tr = safeInpStr("Enter the translation in English:");
-				rec.push_back(Trans(tr, word));
+				addEnt(Trans(tr, word));
 			}
 			cout << "Added!\n";
 			return true;
@@ -72,12 +80,29 @@ private:
 		return false;
 	}
 public:
-	Dictionary(){}
-	Dictionary(const Dictionary& other):rec(other.rec){}
-	~Dictionary(){}
+	Dictionary():data(nullptr), count(0){}
+	Dictionary(const Dictionary& other):data(other.data),count(other.count){
+		if (other.count > 0) {
+			data = new Trans[other.count];
+			for (size_t i = 0; i < other.count; ++i) data[i] = other.data[i];
+			count = other.count;
+		}
+	}
+	~Dictionary(){
+		delete[] data;
+	}
 	Dictionary& operator=(const Dictionary& other){
 		if (this != &other) {
-			rec = other.rec;
+			delete[] data;
+			if (other.count > 0) {
+				data = new Trans[other.count];
+				for (size_t i = 0; i < other.count; ++i) data[i] = other.data[i];
+				count = other.count;
+			}
+			else {
+				data = nullptr;
+				count = 0;
+			}
 		}
 		return *this;
 	}
@@ -87,7 +112,7 @@ public:
 			cout << "Word:" << en << "already exists\n";
 			return;
 		}
-		rec.push_back(Trans(en, ru));
+		addEnt(Trans(en, ru));
 		cout << "Added:" << en << "->" << ru << '\n';
 	}
 	//2
@@ -99,47 +124,50 @@ public:
 			}
 			return;
 		}
-		cout << "Translation:" << rec[ind].GetRus() << '\n';
-		string nru;
-		nru = safeInpStr("Enter a new translation:");
-		rec[ind].SetRus(nru);
+		cout << "Translation:" << data[ind].GetRus() << '\n';
+		string nru = safeInpStr("Enter a new translation:");
+		data[ind].SetRus(nru);
 		cout << "The translation has been changed\n";
 	}
 	//3
 	void EnToRu(const string& en) {
 		int ind = findEng(en);
 		if (ind == -1) {
-			if (!promt(en, true))
+			if (!promt(en, true)) {
 				cout << "The translation was not found\n";
+			}
 			return;
 		}
-		cout << en << " -> " << rec[ind].GetRus() << '\n';
+		cout << en << " -> " << data[ind].GetRus() << '\n';
 	}
 	//4
 	void RuToEn(const string& ru) {
-		vector<string> res;
-		for (size_t i = 0; i < rec.size(); ++i) {
-			if (rec[i].GetRus() == ru) {
-				res.push_back(rec[i].GetEng());
+		string* res = nullptr;
+		size_t resC = 0;
+		for (size_t i = 0; i < count; ++i) {
+			if (data[i].GetRus() == ru) {
+				string* newRes = new string[resC + 1];
+				for (size_t j = 0; j < resC; ++j) newRes[j] = res[j];
+				newRes[resC] = data[i].GetEng();
+				delete[] res;
+				res = newRes;
+				++resC;
 			}
 		}
-		if (res.empty()) {
-			if (!promt(ru, false)) {
-				cout << "The translation was not found\n";
-			}
+		if (resC == 0) {
+			if (!promt(ru, false)) cout << "The translation was not found\n";
 			return;
 		}
-		cout << ru << "->";
-		for (size_t j = 0; j < res.size(); ++j) {
-			if (j > 0) {
-				cout << ", ";
-			}
+		cout << ru << " -> ";
+		for (size_t j = 0; j < resC; ++j) {
+			if (j > 0) cout << ", ";
 			cout << res[j];
 		}
 		cout << '\n';
+		delete[] res;
 	}
 	//5
-	int Size() const { return rec.size(); }
+	int Size() const { return static_cast<int>(count); }
 	//6
 	void SaveInFile(const string& fname) {
 		std::ofstream file(fname);
@@ -147,8 +175,8 @@ public:
 			cerr << "Error opening the file for writing\n";
 			return;
 		}
-		for (size_t i = 0; i < rec.size(); ++i) {
-			file << rec[i].GetEng() << " " << rec[i].GetRus() << '\n';
+		for (size_t i = 0; i < count; ++i) {
+			file << data[i].GetEng() << " " << data[i].GetRus() << '\n';
 		}
 		file.close();
 		cout << "Dictionary saved to a file " << fname << '\n';
@@ -171,7 +199,7 @@ public:
 				string en = line.substr(0, spacePos);
 				string ru = line.substr(spacePos + 1);
 				if (findEng(en) == -1) {
-					rec.push_back(Trans(en, ru));
+					addEnt(Trans(en, ru));
 					++c;
 				}
 				else {
