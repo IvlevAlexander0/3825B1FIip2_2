@@ -12,10 +12,21 @@ void InputClear() {
 	cin.clear();
 	cin.ignore(1000, '\n');
 }
+string safeInpWord(const string& promt) {
+	string s;
+	while (true) {
+		cout << promt;
+		getline(cin, s);
+		if (!s.empty() && s.find(' ') >= s.length()) {
+			return s;
+		}
+		cout << "Error: word must not contain spaces and cannot be empty\n";
+	}
+}
 string safeInpStr(const string& promt) {
 	string s;
 	cout << promt;
-	getline(cin,s);
+	getline(cin, s);
 	return s;
 }
 class Trans {
@@ -52,7 +63,9 @@ private:
 	}
 	void addEnt(const Trans& ent) {
 		Trans* nData = new Trans[count + 1];
-		for (size_t i = 0; i < count; ++i) nData[i] = data[i];
+		for (size_t i = 0; i < count; ++i) {
+			nData[i] = data[i];
+		}
 		nData[count] = ent;
 		delete[] data;
 		data = nData;
@@ -67,11 +80,11 @@ private:
 		if (an == 'y' || an == 'Y') {
 			string tr;
 			if (isEng) {
-				tr = safeInpStr("Enter the translation in Russian:");
+				tr = safeInpWord("Enter the translation in Russian:");
 				addEnt(Trans(word,tr));
 			}
 			else{
-				tr = safeInpStr("Enter the translation in English:");
+				tr = safeInpWord("Enter the translation in English:");
 				addEnt(Trans(tr, word));
 			}
 			cout << "Added!\n";
@@ -81,7 +94,7 @@ private:
 	}
 public:
 	Dictionary():data(nullptr), count(0){}
-	Dictionary(const Dictionary& other):data(other.data),count(other.count){
+	Dictionary(const Dictionary& other):data(nullptr),count(0){
 		if (other.count > 0) {
 			data = new Trans[other.count];
 			for (size_t i = 0; i < other.count; ++i) data[i] = other.data[i];
@@ -108,6 +121,14 @@ public:
 	}
 	//1
 	void AddWord(const string& en, const string& ru) {
+		if (en.empty() || ru.empty()) {
+			cout << "Word cannot be empty.\n";
+			return;
+		}
+		if (en.find(' ') < en.length() || ru.find(' ') < ru.length()) {
+			cout << "Words must not contain spaces.\n";
+			return;
+		}
 		if (findEng(en) != -1) {
 			cout << "Word:" << en << "already exists\n";
 			return;
@@ -125,46 +146,78 @@ public:
 			return;
 		}
 		cout << "Translation:" << data[ind].GetRus() << '\n';
-		string nru = safeInpStr("Enter a new translation:");
+		string nru = safeInpWord("Enter a new translation:");
 		data[ind].SetRus(nru);
 		cout << "The translation has been changed\n";
 	}
 	//3
 	void EnToRu(const string& en) {
-		int ind = findEng(en);
-		if (ind == -1) {
-			if (!promt(en, true)) {
-				cout << "The translation was not found\n";
+		size_t start = 0;
+		while (start < en.length()) {
+			while (start < en.length() && en[start] == ' ') {
+				++start;
 			}
-			return;
+			if (start >= en.length()) {
+				break;
+			}
+			size_t end = en.find(' ', start);
+			if (end >= en.length()) {
+				end = en.length();
+			}
+			string word = en.substr(start, end - start);
+			int idx = findEng(word);
+			if (idx != -1) {
+				cout << data[idx].GetRus();
+			}
+			else {
+				if (!promt(en, true)) {
+					cout << "The translation was not found\n";
+				}
+				return;
+			}
+			start = end;
+			if (start < en.length()) cout << ' ';
 		}
-		cout << en << " -> " << data[ind].GetRus() << '\n';
+		cout << '\n';
 	}
 	//4
 	void RuToEn(const string& ru) {
-		string* res = nullptr;
-		size_t resC = 0;
-		for (size_t i = 0; i < count; ++i) {
-			if (data[i].GetRus() == ru) {
-				string* newRes = new string[resC + 1];
-				for (size_t j = 0; j < resC; ++j) newRes[j] = res[j];
-				newRes[resC] = data[i].GetEng();
-				delete[] res;
-				res = newRes;
-				++resC;
+		size_t start = 0;
+		while (start < ru.length()) {
+			while (start < ru.length() && ru[start] == ' ') ++start;
+			if (start >= ru.length()) break;
+			size_t end = ru.find(' ', start);
+			if (end >= ru.length()) end = ru.length();
+			string word = ru.substr(start, end - start);
+			string* res = nullptr;
+			size_t resC= 0;
+			for (size_t i = 0; i < count; ++i) {
+				if (data[i].GetRus() == word) {
+					string* newTrans = new string[resC + 1];
+					for (size_t j = 0; j < resC; ++j) newTrans[j] = res[j];
+					newTrans[resC] = data[i].GetEng();
+					delete[] res;
+					res = newTrans;
+					++resC;
+				}
 			}
-		}
-		if (resC == 0) {
-			if (!promt(ru, false)) cout << "The translation was not found\n";
-			return;
-		}
-		cout << ru << " -> ";
-		for (size_t j = 0; j < resC; ++j) {
-			if (j > 0) cout << ", ";
-			cout << res[j];
+			if (resC > 0) {
+				for (size_t j = 0; j < resC; ++j) {
+					if (j > 0) cout << '/';
+					cout << res[j];
+				}
+				delete[] res;
+			}
+			else {
+				if (!promt(ru, false)) {
+					cout << "The translation was not found\n";
+				}
+				return;
+			}
+			start = end;
+			if (start < ru.length()) cout << ' ';
 		}
 		cout << '\n';
-		delete[] res;
 	}
 	//5
 	int Size() const { return static_cast<int>(count); }
@@ -239,13 +292,13 @@ int main() {
 		switch (ch) {
 		case 1: {
 			string ru, en;
-			en = safeInpStr("Enter the English word: ");
-			ru = safeInpStr("Enter the Russian word: ");
+			en = safeInpWord("Enter the English word: ");
+			ru = safeInpWord("Enter the Russian word: ");
 			dict.AddWord(en, ru);
 			break;
 		}
 		case 2: {
-			word = safeInpStr("Enter the English word: ");
+			word = safeInpWord("Enter the English word: ");
 			dict.changeTrans(word);
 			break;
 		}
@@ -264,12 +317,12 @@ int main() {
 			break;
 		}
 		case 6: {
-			fname = safeInpStr("File name to save: ");
+			fname = safeInpWord("File name to save: ");
 			dict.SaveInFile(fname);
 			break;
 		}
 		case 7: {
-			fname = safeInpStr("File name to upload: ");
+			fname = safeInpWord("File name to upload: ");
 			dict.LoadFile(fname);
 			break;
 		}
