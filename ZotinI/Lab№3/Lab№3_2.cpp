@@ -2,368 +2,610 @@
 #include <cmath>
 #include <fstream>
 #include <string>
+#include <cctype>
 
 using std::cout;
 using std::cin;
-using std::ostream;
+using std::string;
 
+class Customfunc {
+private:
+    string expr;
+    double x;
+    size_t pos;
+    bool matherror;
+    string errormsg;
 
+    void spaces() {
+        while (pos < expr.length() && isspace(expr[pos])) {
+            pos++;
+        }
+    }
 
+    double get_number() {
+        spaces();
+        string num;
+        while (pos < expr.length() && (isdigit(expr[pos]) || expr[pos] == '.')) {
+            num += expr[pos];
+            pos++;
+        }
+        if (!num.empty()) {
+            return std::stod(num);
+        }
+        return 0;
+    }
+
+    double get_function() {
+        spaces();
+        string funcs[] = { "sin", "cos", "tan", "exp", "log", "sqrt", "abs" };
+
+        for (int i = 0; i < 7; ++i) {
+            if (expr.substr(pos, funcs[i].length()) == funcs[i]) {
+                pos += funcs[i].length();
+                spaces();
+
+                if (pos >= expr.length() || expr[pos] != '(') {
+                    matherror = true;
+                    errormsg = "Invalid function syntax";
+                    return 0;
+                }
+                pos++;
+                spaces();
+
+                double arg = expression();
+                spaces();
+
+                if (pos >= expr.length() || expr[pos] != ')') {
+                    matherror = true;
+                    errormsg = "Invalid function syntax";
+                    return 0;
+                }
+                pos++;
+
+                if (funcs[i] == "sin") {
+                    return std::sin(arg);
+                }
+                if (funcs[i] == "cos") {
+                    return std::cos(arg);
+                }
+                if (funcs[i] == "tan") {
+                    return std::tan(arg);
+                }
+                if (funcs[i] == "exp") {
+                    return std::exp(arg);
+                }
+                if (funcs[i] == "log") {
+                    if (arg <= 0) {
+                        matherror = true;
+                        errormsg = "Invalid expression";
+                        return 0;
+                    }
+                    return std::log(arg);
+                }
+                if (funcs[i] == "sqrt") {
+                    if (arg < 0) {
+                        matherror = true;
+                        errormsg = "Invalid expression";
+                        return 0;
+                    }
+                    return std::sqrt(arg);
+                }
+                if (funcs[i] == "abs") {
+                    return std::abs(arg);
+                }
+            }
+        }
+        return 0;
+    }
+
+    double get_primary() {
+        spaces();
+
+        if (pos >= expr.length()) {
+            return 0;
+        }
+
+        if (expr[pos] == '(') {
+            pos++;
+            double result = expression();
+            spaces();
+            if (pos < expr.length() && expr[pos] == ')') {
+                pos++;
+            }
+            else {
+                matherror = true;
+                errormsg = "Invalid expression";
+                return 0;
+            }
+            return result;
+        }
+
+        if (expr[pos] == 'x') {
+            pos++;
+            return x;
+        }
+
+        size_t saved_pos = pos;
+        double num = get_number();
+        if (saved_pos != pos) { 
+            return num;
+        }
+
+        double func_result = get_function();
+        if (func_result != 0 || matherror) {
+            return func_result;
+        }
+
+        if (pos < expr.length() && !isspace(expr[pos])) {
+            matherror = true;
+            errormsg = "Invalid expression";
+            return 0;
+        }
+
+        return 0;
+    }
+
+    double expression() {
+        spaces();
+        double result = get_primary();
+        spaces();
+
+        while (pos < expr.length() && !matherror) {
+            char op = expr[pos];
+            if (op == '+' || op == '-') {
+                pos++;
+                double term = get_primary();
+                spaces();
+                if (op == '+') {
+                    result += term;
+                }
+                else {
+                    result -= term;
+                }
+            }
+            else if (op == '*' || op == '/') {
+                pos++;
+                double factor = get_primary();
+                spaces();
+                if (op == '*') {
+                    result *= factor;
+                }
+                else if (op == '/') {
+                    if (factor == 0) {
+                        matherror = true;
+                        errormsg = "Invalid expression";
+                        return 0;
+                    }
+                    result /= factor;
+                }
+            }
+            else {
+                break;
+            }
+        }
+        return result;
+    }
+
+public:
+    Customfunc() : matherror(false), pos(0) {}
+
+    double evaluate(const string& expres, double x_val) {
+        expr = expres;
+        x = x_val;
+        pos = 0;
+        matherror = false;
+        errormsg = "";
+
+        double result = expression();
+
+        if (matherror) {
+            return 0;
+        }
+
+        spaces();
+        if (pos < expr.length()) {
+            matherror = true;
+            errormsg = "Invalid expression";
+            return 0;
+        }
+
+        if (std::isnan(result) || std::isinf(result)) {
+            matherror = true;
+            errormsg = "Invalid expression";
+            return 0;
+        }
+        return result;
+    }
+
+    bool error() const {
+        return matherror;
+    }
+
+    string errormassage() const {
+        return errormsg;
+    }
+
+    bool validate_expression(const string& expres) {
+        expr = expres;
+        x = 0;
+        pos = 0;
+        matherror = false;
+        errormsg = "";
+
+        double result = expression();
+
+        spaces();
+        if (pos < expr.length() && !matherror) {
+            return false;
+        }
+
+        return !matherror;
+    }
+};
 
 class Tab {
 private:
-	size_t count;
-	double a;
-	double b;
-	double* res;
-	double* points;
-	bool wastabulation;
-	enum FunctionType { SIN, COS, EXP, LOG, SQRT } tfunc;
-	bool truecount(size_t c) const {
-		return c >= 1 && c <= 20;
-	}
+    size_t count;
+    double a, b;
+    double* res;
+    bool wastabulation;
+    double st, cur;
+    string customExpr;
+    Customfunc calculator;
 
-	double calc(double x) const {
-		switch (tfunc) {
-		case SIN: return std::sin(x);
-		case COS: return std::cos(x);
-		case EXP: return std::exp(x);
-		case LOG: return std::log(x);
-		case SQRT: return std::sqrt(x);
-		default: return 0.0;
-		}
-	}
+    bool truecount(size_t c) const {
+        return c >= 1;
+    }
+
+    void step_start() {
+        if (count != 1) {
+            st = (b - a) / (count - 1);
+        }
+        else {
+            st = 0;
+        }
+        cur = a;
+    }
+
 public:
-	Tab(size_t c = 5, double a1 = 10.0, double b1 = 20.0) {
-		if (truecount(c)) {
-			count = c;
-		}
-		else {
-			count = 5;
-		}
-		res = new double[count];
-		points = new double[count];
-		wastabulation = false;
-		tfunc = SIN;
-		if (a1 < b1) {
-			a = a1;
-			b = b1;
-		}
-		else {
-			b = a1;
-			a = b1;
-		}
+    Tab(size_t c = 5, double a1 = 10.0, double b1 = 20.0) : res(nullptr), wastabulation(false), customExpr("") {
+        if (truecount(c)) {
+            count = c;
+        }
+        else {
+            count = 5;
+        }
 
-	}
+        res = new double[count];
 
-	Tab(const Tab& other) : count(other.count), a(other.a), b(other.b), tfunc(other.tfunc) {
-		res = new double[count];
-		points = new double[count];
-		for (size_t i = 0; i < count; ++i) {
-			res[i] = other.res[i];
-			points[i] = other.points[i];
-		}
-	}
+        if (a1 < b1) {
+            a = a1;
+            b = b1;
+        }
+        else {
+            b = a1;
+            a = b1;
+        }
+        step_start();
+    }
 
-	Tab& operator=(const Tab& other) {
-		if (this != &other) {
-			delete[] res;
-			delete[] points;
+    Tab(const Tab& other) : count(other.count), a(other.a), b(other.b), st(other.st), customExpr(other.customExpr), wastabulation(other.wastabulation), res(nullptr) {
+        res = new double[count];
+        for (size_t i = 0; i < count; ++i) {
+            res[i] = other.res[i];
+        }
+    }
 
-			count = other.count;
-			res = new double[count];
-			points = new double[count];
-			a = other.a;
-			b = other.b;
-			tfunc = other.tfunc;
-			for (size_t i = 0; i < count; ++i) {
-				res[i] = other.res[i];
-				points[i] = other.points[i];
-			}
-		}
-		return *this;
-	}
+    Tab& operator=(const Tab& other) {
+        if (this != &other) {
+            delete[] res;
 
-	void set_func() {
-		int ch;
-		do {
-			cout << "\n--- Select function ---\n";
-			cout << "1. sin(x)\n";
-			cout << "2. cos(x)\n";
-			cout << "3. exp(x)\n";
-			cout << "4. log(x) (natural logarithm)\n";
-			cout << "5. sqrt(x)\n";
+            count = other.count;
+            res = new double[count];
+            a = other.a;
+            b = other.b;
+            st = other.st;
+            customExpr = other.customExpr;
+            wastabulation = other.wastabulation;
+            for (size_t i = 0; i < count; ++i) {
+                res[i] = other.res[i];
+            }
+        }
+        return *this;
+    }
 
-			cin >> ch;
-			if (cin.fail()) {
-				cin.clear();
-				cin.ignore(100000, '\n');
-			}
+    void set_func() {
+        cout << "\nEnter your function f(x)\n";
+        cout << "Examples: x*x, sin(x), 2*x+log(x), exp(-x)*cos(x)\n";
+        cout << "Your function: ";
+        cin.ignore();
+        std::getline(cin, customExpr);
 
-			switch (ch) {
-			case 1:
-				tfunc = SIN;
-				break;
-			case 2:
-				tfunc = COS;
-				break;
-			case 3:
-				tfunc = EXP;
-				break;
-			case 4:
-				tfunc = LOG;
-				break;
-			case 5:
-				tfunc = SQRT;
-				break;
-			default:
-				cout << "Invalid choice.\n";
-				break;
-			}
-		} while (ch < 1 || ch > 5);
-		cout << "The operation is completed\n";
-	}
+        if (customExpr.empty()) {
+            cout << "Using default: x\n";
+            customExpr = "x";
+        }
+        Customfunc validator;
+        if (!validator.validate_expression(customExpr)) {
+            cout << "Error: Invalid function syntax\n";
+            cout << "Function not set. Please try again.\n";
+            return;
+        }
 
-	void set_count() {
-		cout << "Enter the number of tabulation points: " << '\n';
-		size_t c;
-		do {
-			cin >> c;
-			if (cin.fail()) {
-				cin.clear();
-				cin.ignore(10000, '\n');
-				cout << "Input error! Enter a number (1-20): ";
-			}
-		} while (!truecount(c));
-		count = c;
-		double* npoints = new double[c];
-		double* nres = new double[c];
+        wastabulation = false;
+        cout << "Function set to: f(x) = " << customExpr << "\n";
+    }
 
-		delete[] points;
-		delete[] res;
+    void set_count() {
+        cout << "Enter the number of tabulation points: ";
+        size_t c;
+        do {
+            cin >> c;
+            if (cin.fail()) {
+                cin.clear();
+                cin.ignore(10000, '\n');
+                cout << "Input error! Enter a number (>=1): ";
+            }
+        } while (!truecount(c));
 
-		points = npoints;
-		res = nres;
-		cout << "The operation is completed\n";
-	}
+        count = c;
+        double* nres = new double[c];
+        delete[] res;
+        res = nres;
 
-	void print_count() const {
-		cout << "Current number of points: " << count << '\n';
-	}
+        step_start();
+        cout << "Number of points set to " << count << "\n";
+    }
 
-	void set_otr() {
-		double a1, b1;
-		cout << "Enter start of tabulation: " << '\n';
-		cin >> a1;
-		if (cin.fail()) {
-			cin.clear();
-			cin.ignore(10000, '\n');
-			cout << "Input error.\n";
-			return;
-		}
+    void print_count() const {
+        cout << "Current number of points: " << count << '\n';
+    }
 
-		cout << "Enter end of tabulation: " << '\n';
-		cin >> b1;
-		if (cin.fail()) {
-			cin.clear();
-			cin.ignore(10000, '\n');
-			cout << "Input error.\n";
-			return;
-		}
+    void set_otr() {
+        double a1, b1;
+        cout << "Enter start of tabulation: ";
+        cin >> a1;
+        if (cin.fail()) {
+            cin.clear();
+            cin.ignore(10000, '\n');
+            cout << "Input error.\n";
+            return;
+        }
 
-		if (a1 < b1) {
-			a = a1;
-			b = b1;
-		}
-		else {
-			b = a1;
-			a = b1;
-		}
-		cout << "The operation is completed\n";
-	}
+        cout << "Enter end of tabulation: ";
+        cin >> b1;
+        if (cin.fail()) {
+            cin.clear();
+            cin.ignore(10000, '\n');
+            cout << "Input error.\n";
+            return;
+        }
 
-	void print_otr() const {
-		cout << "Start of tabulation: " << a << '\n';
-		cout << "End of tabulation: " << b << '\n';
-	}
+        if (a1 < b1) {
+            a = a1;
+            b = b1;
+        }
+        else {
+            b = a1;
+            a = b1;
+        }
 
-	void tabulation() {
-		bool d = false;
-		double st;
-		if (count != 1) {
-			st = (b - a) / (count - 1);
-		}
-		else {
-			st = 0;
-		}
-		double cur = a;
-		for (size_t i = 0; i < count; ++i) {
-			if (tfunc == LOG && cur <= 0) {
-				cout << "Logarithm of non-positive number at x = " << cur << '\n';
-				d = true;
-				break;
-			}
-			if (tfunc == SQRT && cur < 0) {
-				cout << "Square root of negative number at x = " << cur << '\n';
-				d = true;
-				break;
-			}
-			res[i] = calc(cur);
-			points[i] = cur;
-			cur += st;
-		}
-		if (!d) {
-			cout << "Tabulation is done" << '\n';
-			wastabulation = true;
-		}
-		else {
-			cout << "Tabulation is failed" << '\n';
-		}
+        step_start();
+    }
 
-	}
+    void print_otr() const {
+        cout << "Start of tabulation: " << a << '\n';
+        cout << "End of tabulation: " << b << '\n';
+    }
 
-	void print_tabulation() const {
-		if (res == nullptr || !wastabulation) {
-			cout << "There are no results" << '\n';
-		}
-		else {
-			cout << "------------Results------------" << '\n';
-			cout << "x              |          f(x) " << '\n';
-			cout << "-------------------------------" << '\n';
+    void tabulation() {
+        if (customExpr.empty()) {
+            cout << "Function is not set\n";
+            return;
+        }
 
-			for (size_t i = 0; i < count; ++i) {
-				cout.precision(6);
-				cout << std::fixed;
-				cout.width(15); cout << std::left << points[i] << " | ";
-				cout.width(15); cout << std::left << res[i] << '\n';
-			}
-			cout << "-------------------------------" << '\n';
-		}
-	}
+        bool haserrors = false;
+        int errorcount = 0;
+        double x = a;
 
-	void savetofile(const std::string& name, bool append = true) {
-		if (res == nullptr || points == nullptr || !wastabulation) {
-			cout << "No results to save.\n";
-			return;
-		}
-		std::ofstream file;
-		if (append) {
-			file.open(name, std::ios::app);
-		}
-		else {
-			file.open(name);
-		}
+        cout << "Tabulating f(x) = " << customExpr << "\n";
 
-		if (file.is_open()) {
-			if (append) {
-				file << "\n========================================\n";
-				file << "New tabulation results:\n";
-				file << "========================================\n";
-			}
+        for (size_t i = 0; i < count; ++i) {
+            Customfunc tempCalc;
+            res[i] = tempCalc.evaluate(customExpr, x);
 
-			file << "------------Results------------\n";
-			file << "x              |          f(x) \n";
-			file << "-------------------------------\n";
+            if (tempCalc.error()) {
+                haserrors = true;
+                errorcount++;
+                res[i] = NAN;
+            }
 
-			for (size_t i = 0; i < count; ++i) {
-				file.precision(6);
-				file << std::fixed;
-				file.width(15); file << std::left << points[i] << " | ";
-				file.width(15); file << std::left << res[i] << '\n';
-			}
-			file << "-------------------------------\n";
-			file.close();
-			if (append) {
-				cout << "Results appended to " << name << '\n';
-			}
-			else {
-				cout << "Results saved to " << name << "\n";
-			}
-		}
-		else {
-			cout << "File opening error" << '\n';
-		}
-	}
+            x += st;
+        }
 
-	~Tab() {
-		delete[] res;
-		delete[] points;
-	}
+        if (!haserrors) {
+            cout << "Tabulation completed successfully.\n";
+        }
+        else {
+            cout << "Tabulation completed with " << errorcount << " error(s).\n";
+        }
+
+        wastabulation = true;
+    }
+
+    void print_tabulation() const {
+        if (res == nullptr || !wastabulation) {
+            cout << "No results\n";
+        }
+        else {
+            cout << "\n========================================\n";
+            cout << "f(x) = " << customExpr << "\n";
+            cout << "========================================\n";
+            cout << "    x        |        f(x)\n";
+            cout << "----------------------------------------\n";
+
+            double x = a;
+            int errorCount = 0;
+
+            for (size_t i = 0; i < count; ++i) {
+                cout.precision(6);
+                cout << std::fixed;
+                cout.width(12); cout << std::right << x << " | ";
+
+                if (std::isnan(res[i])) {
+                    cout.width(12); cout << std::right << "undefined";
+                    errorCount++;
+                }
+                else if (std::isinf(res[i])) {
+                    cout.width(12); cout << std::right << "infinity";
+                    errorCount++;
+                }
+                else {
+                    cout.width(12); cout << std::right << res[i];
+                }
+                cout << '\n';
+                x += st;
+            }
+            cout << "========================================\n";
+
+            if (errorCount > 0) {
+                cout << "Note: " << errorCount << " point(s) had errors\n";
+            }
+        }
+    }
+
+    void savetofile(const string& name, bool append = true) {
+        if (res == nullptr || !wastabulation) {
+            cout << "No results to save.\n";
+            return;
+        }
+
+        std::ofstream file;
+        if (append) {
+            file.open(name, std::ios::app);
+        }
+        else {
+            file.open(name);
+        }
+
+        if (file.is_open()) {
+            if (append) {
+                file << "\n========================================\n";
+                file << "New tabulation results:\n";
+            }
+
+            file << "f(x) = " << customExpr << "\n";
+            file << "========================================\n";
+            file << "    x        |        f(x)\n";
+            file << "----------------------------------------\n";
+
+            double x = a;
+            for (size_t i = 0; i < count; ++i) {
+                file.precision(6);
+                file << std::fixed;
+                file.width(12); file << std::right << x << " | ";
+
+                if (std::isnan(res[i])) {
+                    file.width(12); file << std::right << "undefined";
+                }
+                else if (std::isinf(res[i])) {
+                    file.width(12); file << std::right << "infinity";
+                }
+                else {
+                    file.width(12); file << std::right << res[i];
+                }
+                file << '\n';
+                x += st;
+            }
+            file << "========================================\n";
+            file.close();
+
+            cout << "Results saved to " << name << "\n";
+        }
+        else {
+            cout << "File opening error\n";
+        }
+    }
+
+    ~Tab() {
+        delete[] res;
+    }
 };
 
-
 int main() {
-	size_t s;
-	Tab t;
-	do {
-		cout << "---Function tabulator---" << '\n';
-		cout << "1. set the current function" << '\n';
-		cout << "2. set the current number of tabulation points" << '\n';
-		cout << "3. find out the current number of tabulation points" << '\n';
-		cout << "4. set a tabulation segment" << '\n';
-		cout << "5. find out the tabulation segment" << '\n';
-		cout << "6. perform tabulation of the function" << '\n';
-		cout << "7. output tabulation results" << '\n';
-		cout << "8. save tabulation results to a file" << '\n';
-		cout << "0. exit" << '\n';
+    size_t s;
+    Tab t;
 
-		cin >> s;
-		if (cin.fail()) {
-			cin.clear();
-			cin.ignore(10000, '\n');
-			cout << "Invalid input. Please enter a number.\n";
-			continue;
-		}
+    do {
+        cout << "\n---Function tabulator---\n";
+        cout << "1. set the current function\n";
+        cout << "2. set the current number of tabulation points\n";
+        cout << "3. find out the current number of tabulation points\n";
+        cout << "4. set a tabulation segment\n";
+        cout << "5. find out the tabulation segment\n";
+        cout << "6. perform tabulation of the function\n";
+        cout << "7. output tabulation results\n";
+        cout << "8. save tabulation results to a file\n";
+        cout << "0. exit\n";
+        cout << "Choice: ";
 
-		switch (s) {
-		case 1:
-			t.set_func();
-			break;
-		case 2:
-			t.set_count();
-			break;
-		case 3:
-			t.print_count();
-			break;
-		case 4:
-			t.set_otr();
-			break;
-		case 5:
-			t.print_otr();
-			break;
-		case 6:
-			t.tabulation();
-			break;
-		case 7:
-			t.print_tabulation();
-			break;
-		case 8:
-			cout << "Choose whether you want to rewrite(0) or add (1) to the file." << '\n';
-			size_t k;
-			do {
-				cin >> k;
-				if (cin.fail()) {
-					cin.clear();
-					cin.ignore(10000, '\n');
-					cout << "Invalid input. Please enter a number.\n";
-					continue;
-				}
-			} while (k != 1 && k != 0);
-			if (k == 0) {
-				t.savetofile("Tab.txt", false);
-			}
-			else {
-				t.savetofile("Tab.txt", true);
-			}
-			break;
-		case 0:
-			break;
-		default:
-			cout << "Invalid choice. Try again.\n";
-			break;
-		}
-		cout << '\n';
-	} while (s != 0);
+        cin >> s;
+        if (cin.fail()) {
+            cin.clear();
+            cin.ignore(10000, '\n');
+            cout << "Invalid input. Please enter a number.\n";
+            continue;
+        }
 
-	return 0;
+        switch (s) {
+        case 1:
+            t.set_func();
+            break;
+        case 2:
+            t.set_count();
+            break;
+        case 3:
+            t.print_count();
+            break;
+        case 4:
+            t.set_otr();
+            break;
+        case 5:
+            t.print_otr();
+            break;
+        case 6:
+            t.tabulation();
+            break;
+        case 7:
+            t.print_tabulation();
+            break;
+        case 8: {
+            cout << "Choose whether you want to rewrite(0) or add (1) to the file." << '\n';
+            size_t k;
+            do {
+                cin >> k;
+                if (cin.fail()) {
+                    cin.clear();
+                    cin.ignore(10000, '\n');
+                    cout << "Invalid input. Please enter a number.\n";
+                    continue;
+                }
+            } while (k != 1 && k != 0);
+            if (k == 0) {
+                t.savetofile("Tab.txt", false);
+            }
+            else {
+                t.savetofile("Tab.txt", true);
+            }
+            break;
+        }
+        case 0:
+            break;
+        default:
+            cout << "Invalid choice. Try again.\n";
+            break;
+        }
+    } while (s != 0);
+
+    return 0;
 }
