@@ -50,18 +50,10 @@ public:
 	~Vector() {
 		delete[] arr;
 	}
-	Vector newvector() {
-		Vector V(size);
-		cout << "Enter a new vector. The size is: " << size << '\n';
-		for (int i = 0; i < size; ++i) {
-			cout << i + 1 << ") ";
-			V.arr[i] = number();
-		}
-		return V;
-	}
-	void operator=(const Vector& b) {
+	
+	Vector& operator=(const Vector& b) {
 		if (this == &b) {
-			return;
+			return *this;
 		}
 		int* newarr = new int[b.size];
 		for (int i = 0; i < b.size; i++) {
@@ -70,6 +62,7 @@ public:
 		delete[] arr;
 		arr = newarr;
 		size = b.size;
+		return *this;
 	}
 	void sz() {
 		int newsize = 0;
@@ -99,22 +92,22 @@ public:
 		size = newsize;
 		arr = newarr;
 	}
-	void setcomponent() {
-		cout << "Enter the component that you want to set: ";
-		int n = 0;
-		while (n > size || n < 1) {
-			n = number();
-			if (n > size || n < 1) {
-				cout << "The number can be between 1 and " << size << ".Try again : ";
-			}
+	int& operator[](int i) {
+		if (i < 0 || i >= size) {
+			cout << "Error! Incorrect index of the array\n";
+			return arr[0];
 		}
-		cout << '\n';
-		cout << "Enter new number: ";
-		arr[n - 1] = number();
+		return arr[i];
 	}
-
-	void printsize() const {
-		cout << "The size of the vector is: " << size << '\n';
+	const int& operator[](int i) const {
+		if (i < 0 || i >= size) {
+			cout << "Error! Incorrect index of the array\n";
+			return arr[0];
+		}
+		return arr[i];
+	}
+	int getsize() const {
+		return size;
 	}
 	void printvector() const {
 		cout << "V = [";
@@ -123,45 +116,29 @@ public:
 		}
 		cout << arr[size - 1] << "]";
 	}
-	void takecomponent() const {
-		int n = 0;
-		cout << "Enter the component you would like to know: ";
-		while (n >= size || n <= 1) {
-			n = number();
-			if (n >= size || n <= 1) {
-				cout << "The number can be between 1 and " << size << ".Try again: ";
-			}
-		}
-		cout << "The " << n << "th component is: " << arr[n - 1];
-	}
-	void scal() {
-		Vector V = newvector();
+	int scal(Vector V) {
 		int res = 0;
 		for (int i = 0; i < size; ++i) {
 			res = res + V.arr[i] * arr[i];
 		}
-		cout << "The result is: " << res << '\n';
+		return res;
 	}
-	void summ() {
-		Vector V = newvector();
+	Vector summ(Vector V) {
 		Vector res(size);
 		for (int i = 0; i < size; ++i) {
 			res.arr[i] = arr[i] + V.arr[i];
 		}
-		cout << "The result is: ";
-		res.printvector();
-		cout << '\n';
+		return res;
 	}
-	void length() const {
+	double length() const {
 		long long int len = 0;
 		for (int i = 0; i < size; ++i) {
 			len = len + arr[i] * arr[i];
 		}
 		double res = sqrt((double)len);
-		cout << "The length of the vector is: " << res << '\n';
+		return res;
 	}
 };
-
 
 int main() {
 	int mode = 0;
@@ -185,29 +162,67 @@ int main() {
 			menu();
 			break;
 		case 2:
-			V.printsize();
+			cout << "The size of the vector is: " << V.getsize();
 			menu();
 			break;
-		case 3:
-			V.setcomponent();
+		case 3: {
+			cout << "Enter the component that you want to set: ";
+			int n = 0;
+			while (n > V.getsize() || n < 1) {
+				n = number();
+				if (n > V.getsize() || n < 1) {
+					cout << "The number can be between 1 and " << V.getsize() << ".Try again : ";
+				}
+			}
+			cout << '\n';
+			cout << "Enter new number: ";
+			int a = number();
+			V[n - 1] = a;
 			menu();
 			break;
-		case 4:
-			V.takecomponent();
+		}
+		case 4: {
+			int k = 0;
+			cout << "Enter the component you would like to know: ";
+			while (k > V.getsize() || k < 1) {
+				k = number();
+				if (k > V.getsize() || k < 1) {
+					cout << "The number can be between 1 and " << V.getsize() << ".Try again: ";
+				}
+			}
+			cout << "The " << k << "th component is: " << V[k - 1];
 			menu();
 			break;
+		}
 		case 5:
-			V.length();
+			cout << "The length of the vector is: " << V.length();
 			menu();
 			break;
-		case 6:
-			V.scal();
+		case 6: {
+			Vector newV(V.getsize());
+			cout << "Enter a new vector. The size is: " << V.getsize() << '\n';
+			for (int i = 0; i < V.getsize(); ++i) {
+				cout << i + 1 << ") ";
+				newV[i] = number();
+			}
+			int a = V.scal(newV);
+			cout << "The result is " << a;
 			menu();
 			break;
-		case 7:
-			V.summ();
+		}
+		case 7: { 
+			Vector newV(V.getsize());
+			cout << "Enter a new vector. The size is: " << V.getsize() << '\n';
+			for (int i = 0; i < V.getsize(); ++i) {
+				cout << i + 1 << ") ";
+				newV[i] = number();
+			}
+			Vector Summ = V.summ(newV);
+			cout << "The result is ";
+			Summ.printvector();
 			menu();
 			break;
+		}
 		case 8:
 			V.printvector();
 			menu();
