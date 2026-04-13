@@ -11,14 +11,17 @@
 (то есть приближенное значение функции), 8) вывести отклонение значения ряда в выбранной
 точке x от эталонного значения текущей функции в данной точке (эталонное значение
 вычисляется, используя соответствующую функцию из стандартной библиотеки C++).*/
+
+
 #define PI 3.141592653589793
 #include <iostream>
 #include <string>
 using std::string;
+using std::cout;
 
 
-//Enum названий функций для читаемости,
-enum FunctionType {
+//Enum названий функций для читаемости ,
+    enum FunctionType {
     ARCSIN,
     ARCCOS,
     LN_1PLUSX,
@@ -28,8 +31,8 @@ enum FunctionType {
 
 //Структура для пункта 6,
 struct TermInfo {
-    string formula;
-    double value;
+    string formula = "";
+    double value = 0.0;
 };
 
 
@@ -41,7 +44,7 @@ private:
     FunctionType current_function;
 
     //Число членов ряда,
-    int terms_count;
+    size_t terms_count;
 
     //Вспомогательный метод вычисления факториала,
     size_t factorial(size_t n) const {
@@ -49,7 +52,7 @@ private:
             return 1;
         }
         size_t result = 1;
-        for (size_t  i = 2; i <= n; ++i) {
+        for (size_t i = 2; i <= n; ++i) {
             result *= i;
         }
         return result;
@@ -83,7 +86,7 @@ private:
     }
 
     //Вспомогательный метод вычисления члена ряда,
-    double calculateTerm(int n, double x) const {
+    double calculateTerm(size_t n, double x) const {
         double coeff = getCoefficient(n);
         switch (current_function) {
 
@@ -117,7 +120,7 @@ private:
 public:
 
     //Констркутор (по умолчанию),
-    TaylorSeries(FunctionType func = ARCSIN, int terms = 5): current_function(func), terms_count(terms) {
+    TaylorSeries(FunctionType func = ARCSIN, size_t terms = 1): current_function(func), terms_count(terms) {
         if (terms <= 0) {
             throw std::invalid_argument("Terms count must be positive.");
         }
@@ -137,7 +140,7 @@ public:
     }
 
     //3) задать текущее число членов ряда,
-    void setTermsCount(int count) {
+    void setTermsCount(size_t count) {
         if (count > 0) {
             terms_count = count;
         }
@@ -147,12 +150,12 @@ public:
     }
 
     //4) узнать текущее число членов ряда,
-    int getTermsCount() const {
+    size_t getTermsCount() const {
         return terms_count;
     }
 
     //5) выдать формулу члена ряда для выбранной функции,
-    string getTermFormula(int n) const {
+    string getTermFormula() const {
         switch (current_function) {
         case ARCSIN:
             return "((2n)! / (2^(2n) * (n!)^2 * (2n+1))) * x^(2n+1)";
@@ -163,14 +166,14 @@ public:
         case SIN:
             return "(-1)^n * x^(2n+1) / (2n+1)!";
         default:
-            return "unknown";
+            return "Unknown function.";
         }
     }
 
     //6) выдать формулу и значение заданного члена ряда в выбранной точке x,
-    TermInfo getTermInfo(int n, double x) const {
+    TermInfo getTermInfo(size_t n, double x) const {
         TermInfo result;
-        result.formula = getTermFormula(n);
+        result.formula = getTermFormula();
         result.value = calculateTerm(n, x);
         return result;
     }
@@ -178,7 +181,7 @@ public:
     //) рассчитать значение ряда в выбранной точке x (то есть приближенное значение функции),
     double calculateSeries(double x) const {
         double result = 0.0;
-        for (int n = 0; n < terms_count; ++n) {
+        for (size_t n = 0; n < terms_count; ++n) {
             result += calculateTerm(n, x);
         }
         if (current_function == ARCCOS) {
@@ -215,8 +218,19 @@ public:
 
 
 int main() {
-    TaylorSeries func(SIN, 15);
-    std::cout<< func.getDeviation(0.763)<<std::endl;
-
+    try {
+        TaylorSeries func(SIN, 5);
+        cout << func.getDeviation(3.413) << std::endl << func.getTermFormula() << std::endl << func.getTermsCount() << std::endl << func.getFunction() << std::endl << func.calculateSeries(18743.1426) << std::endl;
+        func.setFunction(ARCCOS);
+        func.setTermsCount(9);
+        cout << func.getDeviation(0.782653) << std::endl << func.getTermFormula() << std::endl << func.getTermsCount() << std::endl << func.getFunction() << std::endl << func.calculateSeries(0.1426) << std::endl;
+        cout << func.getDeviation(3.413) << std::endl << func.getTermFormula() << std::endl << func.getTermsCount() << std::endl << func.getFunction() << std::endl << func.calculateSeries(18743.1426) << std::endl;
+    }
+    catch (std::invalid_argument e) {
+        cout << "Terms count must be positive.\n";
+    }
+    catch (std::out_of_range e) {
+        cout << "Func is not defined for that x.\n";
+    }
     return 0;
 }
