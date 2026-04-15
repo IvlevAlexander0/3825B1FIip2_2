@@ -1,3 +1,4 @@
+#define _CRT_SECURE_NO_WARNINGS
 #include <iostream>
 #include <unordered_set>
 bool IsLatin(char c) {
@@ -7,19 +8,6 @@ class string {
 private:
     char* str;
     size_t length_;
-    void strcpy(char* dest, const char* src, size_t n) {
-        size_t i = 0;
-        while (i < n && src[i] != '\0') {
-            dest[i] = src[i];
-            ++i;
-        }
-        dest[i] = '\0';
-    }
-    size_t strlen(const char* s) {
-        size_t len = 0;
-        while (s && s[len] != '\0') { ++len; };
-        return len;
-    }
 public:
     explicit string() : str(new char[1]), length_(0) {
         str[0] = '\0';
@@ -34,7 +22,8 @@ public:
         length_ = (len < 40) ? len : 40;
         try {
             str = new char[length_ + 1];
-            strcpy(str, str_, length_);
+            strncpy(str, str_, length_);
+            str[length_] = '\0';   
         }
         catch (const std::exception& ex) {
             std::cout << ex.what() << std::endl;
@@ -45,7 +34,8 @@ public:
     }
     string(const string& other) : length_(other.length_) {
         str = new char[length_ + 1];
-        strcpy(str, other.str, length_);
+        strncpy(str, other.str, length_);
+        str[length_] = '\0';
     }
     ~string() {
         delete[] str;
@@ -55,7 +45,8 @@ public:
             delete[] str;
             length_ = other.length_;
             str = new char[length_ + 1];
-            strcpy(str, other.str, length_);
+            strncpy(str, other.str, length_);
+            str[length_] = '\0';
         }
         return *this;
     }
@@ -72,7 +63,8 @@ public:
         delete[] str;
         try {
             str = new char[len + 1];
-            strcpy(str, str_, len);
+            strncpy(str, str_, len);
+            str[len] = '\0';
             length_ = len;
         }
         catch (const std::exception& ex) {
@@ -99,7 +91,7 @@ public:
     string substr(size_t begin, size_t end) const {
         if (begin >= end || end > length_) {
             std::cout << "incorrect data" << std::endl;
-            return string();   
+            return string();
         }
         size_t subLen = end - begin;
         char* temp = new char[subLen + 1];
@@ -117,18 +109,26 @@ public:
             if (str[i] != str[length_ - 1 - i]) return false;
         }
         return true;
-    }
-    size_t countLatin() const {
-        std::unordered_set<char> Latins; // контейнер содержащий уникальнве эл-ты в неупорядоченном ввиде помогает отсеять дубликаты
+    }    int countLatin() const {
+        int count = 0;
         for (size_t i = 0; i < length_; ++i) {
-            char c = str[i];
-            if (IsLatin(c)) {
-                Latins.insert(c);
+            char current = str[i];
+            if (IsLatin(current)) {
+                bool alreadyCounted = false;
+                for (size_t j = 0; j < i; ++j) {
+                    if (str[j] == current) {
+                        alreadyCounted = true;
+                        break;
+                    }
+                }
+                if (!alreadyCounted) {
+                    ++count;
+                }
             }
         }
-        return Latins.size();
+        return count;
     }
-    friend std::ostream& operator<<(std::ostream& os, const string& s) { // перегруз вывода
+    friend std::ostream& operator<<(std::ostream& os, const string& s) { 
         os << s.str;
         return os;
     }
@@ -150,7 +150,7 @@ int main() {
         switch (choice) {
         case 1: {
             std::cout << "Enter the string" << std::endl;
-            std::cin.ignore(); // сколько же крови у меня выпил этот несчастный \n в буфере
+            std::cin.ignore(); 
             char s_[41];
             std::cin.getline(s_, 41); 
             s.setstring(s_);
