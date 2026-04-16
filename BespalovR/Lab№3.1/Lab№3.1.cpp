@@ -16,6 +16,7 @@
 #define PI 3.141592653589793
 #include <iostream>
 #include <string>
+#include <cmath>
 using std::string;
 using std::cout;
 
@@ -47,7 +48,7 @@ private:
     size_t terms_count;
 
     //Вспомогательный метод вычисления факториала,
-    size_t factorial(size_t n) const {
+    size_t factorial(size_t n) const noexcept{
         if (n <= 1) {
             return 1;
         }
@@ -58,26 +59,34 @@ private:
         return result;
     }
 
+    //Для вычисления арксинуса/арккосинуса можно улучшить вычисления добавив запоминание прошлых расчитанных значений
+    size_t odd_div_by_even(size_t n) const noexcept {
+        double res = 1;
+        if (n == 0) {
+            return res;
+        }
+        for (size_t i = 1; i <= n; ++i) {
+                res *= (2 * i -1 )/(2*i);
+        }
+        return res;
+    }
+
     //Вспомогательный метод вычисления коэфицента члена ряда,
-    double getCoefficient(size_t n) const {
+    double getCoefficient(size_t n) const noexcept {
 
         switch (current_function) {
 
         case ARCSIN: {
-            double numerator = factorial(2 * n);
-            double denominator = pow(2, 2 * n) * pow(factorial(n), 2) * (2 * n + 1);
-            return numerator / denominator;
+            return odd_div_by_even(n) /(2 * n + 1);
         }
         case ARCCOS: {
-            double numerator = factorial(2 * n);
-            double denominator = pow(2, 2 * n) * pow(factorial(n), 2) * (2 * n + 1);
-            return numerator / denominator;
+            return odd_div_by_even(n) / (2 * n + 1);
         }
         case LN_1PLUSX:
-            return pow( -1, n ) / (n + 1);
+            return (n % 2 ? 1 : -1) / (n + 1);
 
         case SIN:
-            return pow( -1, n ) / factorial(2 * n + 1);
+            return (n % 2 ? 1 : -1) / factorial(2 * n + 1);
 
         default:
             return 0.0;
@@ -92,19 +101,22 @@ private:
 
         case ARCSIN:
             if (abs(x) > 1) {
-                throw std::out_of_range("Arcsin is defined on [-1;1]");
+                cout << "Arcsin is defined on[-1;1]\n";
+                return DBL_MIN;
             }
             return coeff * pow(x, 2 * n + 1);
 
         case ARCCOS:
             if (abs(x) > 1) {
-                throw std::out_of_range("Arccos is defined on [-1;1]");
+                cout << "Arccos is defined on[-1;1]\n";
+                return DBL_MIN;
             }
             return coeff * pow(x, 2 * n + 1);
 
         case LN_1PLUSX:
             if ( x <= -1 || x > 1) {
-                throw std::out_of_range("Ln(1+x) is defined on (-1;1]");
+                cout << "Ln(1 + x) is defined on(-1;1]\n";
+                return DBL_MIN;
             }
             return coeff * pow(x, n + 1);
 
@@ -122,7 +134,7 @@ public:
     //Констркутор (по умолчанию),
     TaylorSeries(FunctionType func = ARCSIN, size_t terms = 1): current_function(func), terms_count(terms) {
         if (terms <= 0) {
-            throw std::invalid_argument("Terms count must be positive.");
+            cout << "Terms count must be positive.\n";
         }
     }
 
@@ -130,12 +142,12 @@ public:
     ~TaylorSeries() = default;
 
     //1) задать текущую функцию,
-    void setFunction(FunctionType func) {
+    void setFunction(FunctionType func) noexcept {
         current_function = func;
     }
 
     //2) узнать текущую функцию,
-    FunctionType getFunction() const {
+    FunctionType getFunction() const noexcept {
         return current_function;
     }
 
@@ -145,17 +157,17 @@ public:
             terms_count = count;
         }
         else {
-            throw std::invalid_argument("Terms count must be positive.");
+                cout << "Terms count must be positive.\n";
         }
     }
 
     //4) узнать текущее число членов ряда,
-    size_t getTermsCount() const {
+    size_t getTermsCount() const noexcept {
         return terms_count;
     }
 
     //5) выдать формулу члена ряда для выбранной функции,
-    string getTermFormula() const {
+    string getTermFormula() const noexcept {
         switch (current_function) {
         case ARCSIN:
             return "((2n)! / (2^(2n) * (n!)^2 * (2n+1))) * x^(2n+1)";
@@ -171,7 +183,7 @@ public:
     }
 
     //6) выдать формулу и значение заданного члена ряда в выбранной точке x,
-    TermInfo getTermInfo(size_t n, double x) const {
+    TermInfo getTermInfo(size_t n, double x) const noexcept {
         TermInfo result;
         result.formula = getTermFormula();
         result.value = calculateTerm(n, x);
@@ -179,9 +191,12 @@ public:
     }
 
     //) рассчитать значение ряда в выбранной точке x (то есть приближенное значение функции),
-    double calculateSeries(double x) const {
+    double calculateSeries(double x) const noexcept {
         double result = 0.0;
         for (size_t n = 0; n < terms_count; ++n) {
+            if (calculateTerm(n, x) == DBL_MIN) {
+                break;
+            }
             result += calculateTerm(n, x);
         }
         if (current_function == ARCCOS) {
@@ -191,7 +206,7 @@ public:
     }
 
     //8) вывести отклонение значения ряда в выбранной точке x от эталонного значения текущей функции в данной точке(эталонное значение вычисляется, используя соответствующую функцию из стандартной библиотеки C++).
-    double getDeviation(double x) const {
+    double getDeviation(double x) const noexcept {
         double series_value = calculateSeries(x);
         double exact_value;
         switch (current_function) {
@@ -218,19 +233,12 @@ public:
 
 
 int main() {
-    try {
-        TaylorSeries func(SIN, 5);
-        cout << func.getDeviation(3.413) << std::endl << func.getTermFormula() << std::endl << func.getTermsCount() << std::endl << func.getFunction() << std::endl << func.calculateSeries(18743.1426) << std::endl;
-        func.setFunction(ARCCOS);
-        func.setTermsCount(9);
-        cout << func.getDeviation(0.782653) << std::endl << func.getTermFormula() << std::endl << func.getTermsCount() << std::endl << func.getFunction() << std::endl << func.calculateSeries(0.1426) << std::endl;
-        cout << func.getDeviation(3.413) << std::endl << func.getTermFormula() << std::endl << func.getTermsCount() << std::endl << func.getFunction() << std::endl << func.calculateSeries(18743.1426) << std::endl;
-    }
-    catch (std::invalid_argument e) {
-        cout << "Terms count must be positive.\n";
-    }
-    catch (std::out_of_range e) {
-        cout << "Func is not defined for that x.\n";
-    }
+    TaylorSeries func(SIN, 5);
+    cout << func.getDeviation(3.413) << std::endl << func.getTermFormula() << std::endl << func.getTermsCount() << std::endl << func.getFunction() << std::endl << func.calculateSeries(18743.1426) << std::endl;
+    func.setFunction(ARCCOS);
+    func.setTermsCount(9);
+    cout << func.getDeviation(0.782653) << std::endl << func.getTermFormula() << std::endl << func.getTermsCount() << std::endl << func.getFunction() << std::endl << func.calculateSeries(0.1426) << std::endl;
+    cout << func.getDeviation(3.413) << std::endl << func.getTermFormula() << std::endl << func.getTermsCount() << std::endl << func.getFunction() << std::endl << func.calculateSeries(18743.1426) << std::endl;
+    
     return 0;
 }
