@@ -49,7 +49,7 @@ int main() {
     cout << "examples of working with the class" << endl;
     Time t1, t2;
     t1.get_time();
-    t1.set_time(13, 8, 21);
+    t1.set_time(6, 53, 26);
     t1.get_time();
     t2.set_time(11, 0, 0);
     t1.difference(t2);
