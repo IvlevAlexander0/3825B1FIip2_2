@@ -2,40 +2,38 @@
 #include <iostream>
 #include <fstream>
 #include <cstring>
-
-const int MAX_WORD = 1000;
+#include <vector>
 
 class Dictionary {
 private:
-    char eng[MAX_WORD][500];
-    char rus[MAX_WORD][500];
-    int count;
+    std::vector<char*> eng;
+    std::vector<char*> rus;
+
     int EngInd(char* word) {
-        for (int i = 0; i < count; i++)
+        for (size_t i = 0; i < eng.size(); i++)
             if (strcmp(eng[i], word) == 0) return i;
         return -1;
     }
+
     int RusInd(char* word) {
-        for (int i = 0; i < count; i++)
+        for (size_t i = 0; i < rus.size(); i++)
             if (strcmp(rus[i], word) == 0) return i;
         return -1;
     }
+
 public:
-    Dictionary() {
-        count = 0;
-        for (int i = 0; i < MAX_WORD; ++i) {
-            eng[i][0] = '\0';
-            rus[i][0] = '\0';
+    Dictionary() {}
+
+    ~Dictionary() {
+        for (size_t i = 0; i < eng.size(); i++) {
+            delete[] eng[i];
+            delete[] rus[i];
         }
+        eng.clear();
+        rus.clear();
     }
 
-    ~Dictionary(){}
-
     void add() {
-        if (count >= MAX_WORD) {
-            std::cout << "Dictionary is full!!!\n" << "\n";
-            return;
-        }
         char en[500], ru[500];
         std::cout << "Russian: \n";
         std::cin >> ru;
@@ -51,12 +49,17 @@ public:
             return;
         }
 
-        strcpy(rus[count], ru);
-        strcpy(eng[count], en);
+        char* newEng = new char[strlen(en) + 1];
+        char* newRus = new char[strlen(ru) + 1];
+        strcpy(newEng, en);
+        strcpy(newRus, ru);
 
-        count++;
+        eng.push_back(newEng);
+        rus.push_back(newRus);
+
         std::cout << "Pair was added\n" << "\n";
     }
+
     void change() {
         char en[500];
 
@@ -68,9 +71,16 @@ public:
         }
 
         std::cout << "New translation: ";
-        std::cin >> rus[i];
+
+        delete[] rus[i];
+        char newRus[500];
+        std::cin >> newRus;
+        rus[i] = new char[strlen(newRus) + 1];
+        strcpy(rus[i], newRus);
+
         std::cout << "Translation was updated\n" << "\n";
     }
+
     void EngToRus() {
         std::cin.ignore();
         char text[500];
@@ -78,9 +88,9 @@ public:
         std::cout << "Text: "; std::cin.getline(text, 500);
         char* start = text;
 
-        for (int i = 0; i <= strlen(text); i++) {
+        for (int i = 0; i <= (int)strlen(text); i++) {
             if (text[i] == ' ' || text[i] == '.' || text[i] == ',' || text[i] == '!' || text[i] == '?' || text[i] == '\0') {
-                if (i > 0 && start != &text[i]) {
+                if (start != &text[i]) {
                     char old = text[i];
                     text[i] = '\0';
 
@@ -92,11 +102,18 @@ public:
                         std::cout << "Word [" << start << "] doesn't exist in dictionary. ";
                         std::cout << "Do you want to add this word? (y/n): ";
                         char ans; std::cin >> ans;
-                        if (ans == 'y' && count < MAX_WORD) {
-                            strcpy(eng[count], start);
-                            std::cout << "Translation: "; std::cin >> rus[count];
+                        if (ans == 'y') {
+                            char* newEng = new char[strlen(start) + 1];
+                            strcpy(newEng, start);
+                            eng.push_back(newEng);
+
+                            char newRus[500];
+                            std::cout << "Translation: "; std::cin >> newRus;
+                            char* newRusStr = new char[strlen(newRus) + 1];
+                            strcpy(newRusStr, newRus);
+                            rus.push_back(newRusStr);
+
                             std::cout << "The word was added\n" << "\n";
-                            count++;
                         }
                     }
                     text[i] = old;
@@ -104,33 +121,41 @@ public:
                 }
             }
         }
-
         std::cout << std::endl;
     }
+
     void RusToEng() {
         std::cin.ignore();
         char text[500];
         std::cout << "Text: "; std::cin.getline(text, 500);
         char* start = text;
-        for (int i = 0; i <= strlen(text); i++) {
+
+        for (int i = 0; i <= (int)strlen(text); i++) {
             if (text[i] == ' ' || text[i] == '.' || text[i] == ',' || text[i] == '!' || text[i] == '?' || text[i] == '\0') {
-                if (i > 0 && start != &text[i]) {
+                if (start != &text[i]) {
                     char old = text[i];
                     text[i] = '\0';
 
                     int idx = RusInd(start);
                     if (idx != -1) {
-                        std::cout << eng[idx] << " " << "\n";
+                        std::cout << eng[idx] << " ";
                     }
                     else {
                         std::cout << "Word [" << start << "] doesn't exist in dictionary. ";
                         std::cout << "Do you want to add this word? (y/n): ";
                         char ans; std::cin >> ans;
-                        if (ans == 'y' && count < MAX_WORD) {
-                            strcpy(rus[count], start);
-                            std::cout << "Translation: "; std::cin >> eng[count];
+                        if (ans == 'y') {
+                            char* newRus = new char[strlen(start) + 1];
+                            strcpy(newRus, start);
+                            rus.push_back(newRus);
+
+                            char newEng[500];
+                            std::cout << "Translation: "; std::cin >> newEng;
+                            char* newEngStr = new char[strlen(newEng) + 1];
+                            strcpy(newEngStr, newEng);
+                            eng.push_back(newEngStr);
+
                             std::cout << "The word was added\n" << "\n";
-                            count++;
                         }
                     }
                     text[i] = old;
@@ -141,19 +166,22 @@ public:
         std::cout << std::endl;
     }
 
-    void showCount() const { std::cout << "Words: " << count << std::endl << "\n"; }
+    void showCount() const {
+        std::cout << "Words: " << eng.size() << std::endl << "\n";
+    }
 
     void save() const {
         char name[100];
         std::cout << "Filename: ";
         std::cin >> name;
         std::ofstream f(name);
-        f << count << std::endl;
-        for (int i = 0; i < count; i++)
+        f << eng.size() << std::endl;
+        for (size_t i = 0; i < eng.size(); i++)
             f << eng[i] << " " << rus[i] << std::endl;
         f.close();
         std::cout << "Dictionary was saved in " << name << std::endl << "\n";
     }
+
     void load() {
         char name[100];
         std::cout << "Filename: ";
@@ -163,16 +191,33 @@ public:
             std::cout << "Error\n" << "\n";
             return;
         }
-        int n; f >> n;
-        count = 0;
-        for (int i = 0; i < n && i < MAX_WORD; i++) {
-            f >> eng[count] >> rus[count];
-            count++;
+
+        for (size_t i = 0; i < eng.size(); i++) {
+            delete[] eng[i];
+            delete[] rus[i];
+        }
+        eng.clear();
+        rus.clear();
+
+        size_t n;
+        f >> n;
+        for (size_t i = 0; i < n; i++) {
+            char tempEng[500], tempRus[500];
+            f >> tempEng >> tempRus;
+
+            char* newEng = new char[strlen(tempEng) + 1];
+            char* newRus = new char[strlen(tempRus) + 1];
+            strcpy(newEng, tempEng);
+            strcpy(newRus, tempRus);
+
+            eng.push_back(newEng);
+            rus.push_back(newRus);
         }
         f.close();
         std::cout << "New dictionary was loaded from " << name << std::endl << "\n";
     }
 };
+
 int main() {
     std::cout << "========== English-Russian Dictionary ==========\n";
     Dictionary d;
