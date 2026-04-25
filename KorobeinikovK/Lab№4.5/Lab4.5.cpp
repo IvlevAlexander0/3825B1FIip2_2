@@ -15,13 +15,66 @@ void InputСlear() {
 class Date {
 private:
 	int day, month, year;
+	bool CorDate(int d, int m, int y) const {
+		if (y < 0 || y > 3000) {
+			return false;
+		}
+		if (m < 1 || m > 12) {
+			return false;
+		}
+		if (d < 1 || d > 31) {
+			return false;
+		}
+		if (m == 4 || m == 6 || m == 9 || m == 11) {
+			if (d > 30) {
+				return false;
+			}
+		}
+		else if (m == 2) {
+			if (d > 28) {
+				return false;
+			}
+		}
+		return true;
+	}
 public:
-	Date(int d = 0, int m = 0, int y = 0):day(d),month(m),year(y){}
+	Date(int d = 0, int m = 0, int y = 0):day(d),month(m),year(y){
+		if (d != 0 || m != 0 || y != 0) {
+			if (!CorDate(d, m, y)) {
+				day = 0;
+				month = 0;
+				year = 0;
+			}
+		}
+	}
 	int GetDay() const { return day; }
 	int GetMonth() const { return month; }
 	int GetYear() const { return year; }
-	void SetDate(int d, int m, int y) { day = d, month = m, year = y; }
-	void print() const { std::cout << day << '.' << month << '.' << year; }
+	void print() const { 
+		if (day == 0 && month == 0 && year == 0) {
+		cout << "---";
+	}
+		else {
+			cout << day << '.' << month << '.' << year;
+		}
+	}
+	bool operator<(const Date& other) const {
+		if (year != other.year) {
+			return year < other.year;
+		}
+		if (month != other.month) {
+			return month < other.month;
+		}
+		if (day != other.day) {
+			return day < other.day;
+		}
+	}
+	bool operator==(const Date& other) const {
+		return year == other.year && month == other.month && day == other.day;
+	}
+	bool isValid() const {
+		return day != 0 || month != 0 || year != 0;
+	}
 };
 class Album {
 private:
@@ -29,7 +82,6 @@ private:
 public:
 	Album(const string& alb = ""):album(alb){}
 	string GetAlb() const { return album; }
-	void SetAlb(const string& alb) { album = alb; }
 	bool isEmpty() const { return album.empty(); }
 	void print() const {
 		if (album.empty()) {
@@ -39,56 +91,74 @@ public:
 			cout << album;
 		}
 	}
+	bool operator<(const Album& other) const {
+		return album < other.album;
+	}
+	bool operator==(const Album& other) const {
+		return album == other.album;
+	}
 };
 
-class Song: public Album, public Date{
+class Song {
 private:
 	string name;
 	string poet;
 	string composer;
 	string singer;
+	Album album;
+	Date ReleaseDate;
 public:
-	Song() : name(""), poet(""), composer(""), singer(""), Album(""), Date(0, 0, 0) {}
+	Song() : name(""), poet(""), composer(""), singer(""), album(""), ReleaseDate(0, 0, 0) {}
 	Song(const string& nm, const string& p, const string& comp, const string& sin,
-		const string& alb,int d,int m,int y):name(nm), poet(p), composer(comp), singer(sin), Album(alb), Date(d, m, y) {}
+		const string& alb,int d,int m,int y):name(nm), poet(p), composer(comp), singer(sin), album(alb), ReleaseDate(d, m, y) {}
 	string GetName() const { return name; }
 	string GetPoet() const { return poet; }
 	string GetComposer() const { return composer; }
 	string GetSinger() const { return singer; }
-	void SetName(const string& nm) { name = nm; }
-	void SetPoet(const string& p) { poet = p; }
-	void SetComposer(const string& comp) { composer = comp; }
-	void SetSinger(const string& sin) { singer = sin; }
+	string GetAlbum() const { return album.GetAlb(); }
+	int GetDay() const { return ReleaseDate.GetDay(); }
+	int GetMonth() const { return ReleaseDate.GetMonth(); }
+	int GetYear() const { return ReleaseDate.GetYear(); }
+	const Date& GetDate() const { return ReleaseDate; }
 	bool operator<(const Song& other) const {
 		if (name != other.name) {
 			return name < other.name;
 		}
 		return singer < other.singer;
 	}
+	bool operator==(const Song& other) const {
+		return name == other.name && singer == other.singer;
+	}
 	void print() const {
 		cout << "Name: " << name;
 		cout << "Album: ";
-		Album::print();
+		album.print();
 		cout << '\n';
 		cout << "Singer: " << singer;
 		cout << "Poet: " << poet;
 		cout << "Composer: " << composer << '\n';
 		cout << "Release date: ";
-		Date::print();
+		ReleaseDate.print();
 		cout << '\n';
 	}
 };
-class Songster: public Song {
+class Songster{
 private:
 	Song* songs;
 	size_t count;
 
 	size_t FindPos(const Song& s) const {
-		size_t i = 0;
-		while (i < count && songs[i] < s) {
-			++i;
+		size_t l = 0, r = count;
+		while (l < r) {
+			size_t mid = l + (r - l) / 2;
+			if (songs[mid] < s) {
+				l = mid + 1;
+			}
+			else {
+				r = mid;
+			}
 		}
-		return i;
+		return l;
 	}
 	int FindInd(const string& nm, const string& sin) const {
 		for (size_t i = 0; i < count; ++i) {
@@ -101,12 +171,26 @@ private:
 public:
 	Songster(): songs(nullptr), count(0) {}
 	Songster(const Songster& other) : songs(nullptr), count(other.count) {
-		if (count) {
+		if (count > 0) {
 			songs = new Song[count];
 			for (size_t i = 0; i < count; ++i) {
 				songs[i] = other.songs[i];
 			}
 		}
+	}
+	Songster& operator=(const Songster& other) {
+		if (this != &other) {
+			delete[] songs;
+			count = other.count;
+			songs = nullptr;
+			if (count > 0) {
+				songs = new Song[count];
+				for (size_t i = 0; i < count; ++i) {
+					songs[i] = other.songs[i];
+				}
+			}
+		}
+		return *this;
 	}
 	~Songster() {
 		delete[] songs;
@@ -124,8 +208,7 @@ public:
 		}
 		narr[pos] = nsong;
 		for (size_t i = pos; i < count; ++i) {
-			size_t nind = i + 1;
-			narr[nind] = songs[i];
+			narr[i + 1] = songs[i];
 		}
 		delete[] songs;
 		songs = narr;
@@ -166,67 +249,46 @@ public:
 		cout << "Enter a new Album(or '-'): ";
 		getline(cin, nAlbum);
 		if (nAlbum == "-") {
-			nAlbum = oldSong.GetAlb();
+			nAlbum = oldSong.GetAlbum();
 		}
 		cout << "Enter a new date(day month year, 0 0 0 - leave the previous date): ";
 		while (true) {
 			cout << "day: ";
 			if (cin >> d) {
-				if (d >= 1 && d <= 31) break;
-				else cout << "The day must be between 1 and 31\n";
+				break;
 			}
-			else {
-				cout << "Enter an integer\n";
-				InputСlear();
-			}
+			cout << "Enter an integer\n";
+			InputСlear();
 		}
 		InputСlear();
 		while (true) {
 			cout << "month: ";
 			if (cin >> m) {
-				if (m >= 1 && m <= 12) break;
-				else cout << "Month must be between 1 and 12\n";
+				break;
 			}
-			else {
-				cout << "Enter an integer\n";
-				InputСlear();
-			}
+			cout << "Enter an integer\n";
+			InputСlear();
 		}
 		InputСlear();
 		while (true) {
 			cout << "year: ";
-			if (cin >> y) {
-				if (y >= 0 && y <= 3000) break;
-				else cout << "The year is entered incorrectly\n";
+			if (cin >> y) {	
+				break;
+				}
+			cout << "Enter an integer\n";
+			InputСlear();
 			}
-			else {
-				cout << "Enter an integer\n";
-				InputСlear();
-			}
-		}
 		InputСlear();
 		Song NewSong(nName, nPoet, nComposer, nSinger, nAlbum, d, m, y);
-		if (NewSong.GetName() == oldSong.GetName() &&
-			NewSong.GetSinger() == oldSong.GetSinger() &&
-			NewSong.GetPoet() == oldSong.GetPoet() &&
-			NewSong.GetComposer() == oldSong.GetComposer() &&
-			NewSong.GetAlb() == oldSong.GetAlb() &&
-			NewSong.GetDay() == oldSong.GetDay() &&
-			NewSong.GetMonth() == oldSong.GetMonth() &&
-			NewSong.GetYear() == oldSong.GetYear()) {
-			cout << "No changes made.\n";
+		if ((d != 0 || m != 0 || y != 0) && !NewSong.GetDate().isValid()) {
+			cout << "Invalid date\n";
 			return;
 		}
-		Song* narr = new Song[count - 1];
-		size_t j = 0;
-		for (size_t i = 0; i < count; ++i) {
-			if (i != static_cast<size_t>(ind)) {
-				narr[j++] = songs[i];
-			}
+		for (size_t i = ind; i < count - 1; ++i) {
+			songs[i] = songs[i + 1];
 		}
-		delete[] songs;
-		songs = narr;
 		--count;
+
 		if (!addSong(NewSong)) {
 			addSong(oldSong);
 			cout << "Edit cancelled\n";
@@ -292,15 +354,9 @@ public:
 			cout<< "Song not found\n";
 			return;
 		}
-		Song* narr = new Song[count - 1];
-		size_t j = 0;
-		for (size_t i = 0; i < count; ++i) {
-			if (i != static_cast<size_t>(ind)) {				
-				narr[j++] = songs[i];
-			}
+		for (size_t i = ind; i < count - 1; ++i) {
+			songs[i] = songs[i + 1];
 		}
-		delete[] songs;
-		songs = narr;
 		--count;
 		cout << "Deleted song\n";
 	}
@@ -313,7 +369,7 @@ public:
 		}
 		for (size_t i = 0; i < count; ++i) {
 			const Song& s = songs[i];
-			file << s.GetAlb() << "|" << s.GetName()<<"|"<< s.GetSinger()<<"|" << s.GetPoet()<<"|" 
+			file << s.GetAlbum() << "|" << s.GetName()<<"|"<< s.GetSinger()<<"|" << s.GetPoet()<<"|" 
 				<< s.GetComposer() << "|" << s.GetDay() << "|" << s.GetMonth() << "|"<< s.GetYear() << "\n";
 		}
 		file.close();
@@ -358,7 +414,7 @@ public:
 			}
 		}
 		file.close();
-		cout << "Uploaded" << loaded << "songs\n";
+		cout << "Uploaded " << loaded << " songs\n";
 	}	
 };
 int main() {
@@ -395,6 +451,7 @@ int main() {
 			getline(cin, composer);
 			cout << "Date(day month year): ";
 			cin >> d >> m >> y;
+			cin.ignore();
 			songster.addSong(Song(name, poet, composer, singer, album, d, m, y));
 			break;
 		}
