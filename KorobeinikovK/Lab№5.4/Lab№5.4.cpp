@@ -32,7 +32,7 @@ private:
 		return true;
 	}
 public:
-	Product(const string& bar, const string& nm, int p, short disc):name(nm), price(p), discount(disc){
+	Product(const string& bar, const string& nm, int p, short disc):name(nm), price(p){
 		if (valBarcode(bar)){
 			barcode = bar;
 		}
