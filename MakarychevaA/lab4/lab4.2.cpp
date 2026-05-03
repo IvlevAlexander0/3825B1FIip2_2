@@ -7,6 +7,24 @@ struct Date {
     int day;
     int month;
     int year;
+    
+    bool isValid() const {
+        if (year < 1900 || year > 2026) return false;
+        if (month < 1 || month > 12) return false;
+        int daysInMonth[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+        if (day < 1 || day > daysInMonth[month - 1]) return false;
+        return true;
+    }
+
+    bool isSame(const Date& other) const {
+        return (day == other.day && month == other.month && year == other.year);
+    }
+
+    bool isEarlier(const Date& other) const {
+        if (year != other.year) return year < other.year;
+        if (month != other.month) return month < other.month;
+        return day < other.day;
+    }
 };
 
 class FloorScales {
@@ -19,7 +37,7 @@ private:
     int obsCount = 0;
     Date startDate = { 1,1,2000 };
 
-    bool isFamilyMember(std::string name) {
+    bool isFamilyMember(const std::string& name) const {
         for (int i = 0; i < familyCount; i++) {
             if (familyMembers[i] == name) {
                 return true;
@@ -28,24 +46,7 @@ private:
         return false;
     }
 
-    bool isSameDate(Date d1, Date d2) {
-        return (d1.day == d2.day && d1.month == d2.month && d1.year == d2.year);
-    }
-
-    bool isEarlier(Date d1, Date d2) {
-        if (d1.year != d2.year) return d1.year < d2.year;
-        if (d1.month != d2.month) return d1.month < d2.month;
-        return d1.day < d2.day;
-    }
-
-    bool isValidDate(Date d) {
-        if (d.year < 1900 || d.year > 2026) return false;
-        if (d.month < 1 || d.month > 12) return false;
-        if (d.day < 1 || d.day > 31) return false;
-        return true;
-    }
-
-    double roundWeight(double w) {
+    double roundWeight(double w) const {
         return std::round(w * 20) / 20.0;
     }
 
@@ -60,7 +61,7 @@ private:
             std::cout << "Year: ";
             std::cin >> d.year;
 
-            if (d.day >= 1 && d.day <= 31 && d.month >= 1 && d.month <= 12 && d.year >= 1900) {
+            if (d.isValid()) {
                 valid = true;
             }
             else {
@@ -77,7 +78,7 @@ public:
         std::cout << "Setting the starting date of observations" << std::endl;
         Date d = inputDate();
 
-        if (isValidDate(d)) {
+        if (d.isValid()) {
             startDate = d;
             std::cout << "The starting date is set: " << d.day << "." << d.month << "." << d.year << std::endl;
         }
@@ -86,7 +87,7 @@ public:
         }
     }
 
-    void getStartDate() {
+    void getStartDate() const {
         std::cout << "The starting date of observations" << std::endl;
         std::cout << "Current starting date: " << startDate.day << "." << startDate.month << "." << startDate.year << std::endl;
     }
@@ -123,6 +124,10 @@ public:
         std::cin >> name;
         std::cout << "Enter the weight: ";
         std::cin >> weight;
+        if (weight < 0) { 
+            std::cout << "Error: weight cannot be negative!" << std::endl;
+            return;
+        }
         std::cout << "Enter the date of observation: " << std::endl;
         date = inputDate();
 
@@ -131,12 +136,12 @@ public:
             return;
         }
 
-        if (!isValidDate(date)) {
+        if (!date.isValid()) {
             std::cout << "Error: incorrect date!" << std::endl;
             return;
         }
 
-        if (isEarlier(date, startDate)) {
+        if (date.isEarlier(startDate)) {
             std::cout << "Error: the date cannot be earlier than the start date!" << std::endl;
             return;
         }
@@ -144,7 +149,7 @@ public:
         weight = roundWeight(weight);
 
         for (int i = 0; i < obsCount; i++) {
-            if (isSameDate(obsDates[i], date)) {
+            if (obsDates[i].isSame(date)) {
                 std::cout << "Replacing the existing surveillance for " << date.day << "." << date.month << "." << date.year << std::endl;
                 obsNames[i] = name;
                 obsWeights[i] = weight;
@@ -162,13 +167,24 @@ public:
             << date.day << "." << date.month << "." << date.year << ")" << std::endl;
     }
 
-    void getWeight() {
+    void getWeight() const {
         std::cout << "Getting weight by date" << std::endl;
         std::cout << "Enter the date of observation: " << std::endl;
-        Date date = inputDate();
+        Date date;
+        std::cout << "Day: ";
+        std::cin >> date.day;
+        std::cout << "Month: ";
+        std::cin >> date.month;
+        std::cout << "Year: ";
+        std::cin >> date.year;
+        
+        if (!date.isValid()) {
+            std::cout << "Error: incorrect date!" << std::endl;
+            return;
+        }
 
         for (int i = 0; i < obsCount; i++) {
-            if (isSameDate(obsDates[i], date)) {
+            if (obsDates[i].isSame(date)) {
                 std::cout << "Weight on " << date.day << "." << date.month << "." << date.year << ": " << obsWeights[i] << " kg" << std::endl;
                 return;
             }
@@ -176,7 +192,7 @@ public:
         std::cout << "Observation of " << date.day << "." << date.month << "." << date.year << " not found" << std::endl;
     }
 
-    void getAverageWeight() {
+    void getAverageWeight() const {
         std::cout << "Average weight of a family member" << std::endl;
         std::string name;
         int period;
@@ -234,7 +250,7 @@ public:
         std::cout << "Average weight " << name << ": " << (sum / count) << " kg" << std::endl;
     }
 
-    void findMinWeight() {
+    void findMinWeight() const {
         std::cout << "Finding the minimum weight" << std::endl;
         std::string name;
         int period;
@@ -301,7 +317,7 @@ public:
         }
     }
 
-    void findMaxWeight() {
+    void findMaxWeight() const {
         std::cout << "Finding the maximum weight" << std::endl;
         std::string name;
         int period;
@@ -368,7 +384,7 @@ public:
         }
     }
 
-    void saveToFile() {
+    void saveToFile() const {
         std::cout << "Saving the history to a file" << std::endl;
         std::string filename;
         std::cout << "Enter the file name: ";
@@ -406,33 +422,75 @@ public:
         std::cin >> filename;
 
         std::ifstream file(filename.c_str());
-
         if (!file.is_open()) {
             std::cout << "Error: couldn't open the file!" << std::endl;
             return;
         }
 
-        familyCount = 0;
-        obsCount = 0;
+        Date tempStartDate;
+        int tempFamilyCount, tempObsCount;
 
-        file >> startDate.day >> startDate.month >> startDate.year;
-        file >> familyCount;
-        for (int i = 0; i < familyCount; i++) {
-            file >> familyMembers[i];
+        if (!(file >> tempStartDate.day >> tempStartDate.month >> tempStartDate.year) || !tempStartDate.isValid()) {
+            std::cout << "Error: invalid start date in file!" << std::endl;
+            file.close();
+            return;
         }
 
-        file >> obsCount;
+        if (!(file >> tempFamilyCount) || tempFamilyCount < 0 || tempFamilyCount > 5) {
+            std::cout << "Error: invalid number of family members in file!" << std::endl;
+            file.close();
+            return;
+        }
+
+        std::string tempFamilyMembers[5];
+        for (int i = 0; i < tempFamilyCount; i++) {
+            if (!(file >> tempFamilyMembers[i])) {
+                std::cout << "Error: failed to read family member data!" << std::endl;
+                file.close();
+                return;
+            }
+        }
+
+        if (!(file >> tempObsCount) || tempObsCount < 0 || tempObsCount > 100) {
+            std::cout << "Error: invalid number of observations in file!" << std::endl;
+            file.close();
+            return;
+        }
+
+        std::string tempObsNames[100];
+        double tempObsWeights[100];
+        Date tempObsDates[100];
+
+        for (int i = 0; i < tempObsCount; i++) {
+            if (!(file >> tempObsDates[i].day >> tempObsDates[i].month >> tempObsDates[i].year) || !tempObsDates[i].isValid()) {
+                std::cout << "Error: invalid date in observation " << i + 1 << "!" << std::endl;
+                file.close();
+                return;
+            }
+
+            if (!(file >> tempObsNames[i] >> tempObsWeights[i]) || tempObsWeights[i] < 0 || tempObsDates[i].isEarlier(tempStartDate)) {
+                std::cout << "Error: invalid data in observation " << i + 1 << "!" << std::endl;
+                file.close();
+                return;
+            }
+        }
+
+        startDate = tempStartDate;
+        familyCount = tempFamilyCount;
+        for (int i = 0; i < familyCount; i++) familyMembers[i] = tempFamilyMembers[i];
+
+        obsCount = tempObsCount;
         for (int i = 0; i < obsCount; i++) {
-            file >> obsDates[i].day >> obsDates[i].month >> obsDates[i].year;
-            file >> obsNames[i];
-            file >> obsWeights[i];
+            obsDates[i] = tempObsDates[i];
+            obsNames[i] = tempObsNames[i];
+            obsWeights[i] = tempObsWeights[i];
         }
 
         file.close();
         std::cout << "The data is downloaded from a file: " << filename << std::endl;
     }
 
-    void showAll() {
+    void showAll() const {
         std::cout << "The whole story" << std::endl;
         std::cout << "Starting date: " << startDate.day << "." << startDate.month << "." << startDate.year << std::endl;
         std::cout << "Family member (" << familyCount << "/5): ";
