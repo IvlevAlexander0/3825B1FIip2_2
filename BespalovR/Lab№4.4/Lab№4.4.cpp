@@ -19,6 +19,7 @@
 11) сохранить контакты в файл,
 12) считать контакты из файла.
 */
+#include <stdexcept>
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -68,6 +69,7 @@ public:
             cout << "ERR:Invalid date format.\n";
             throw invalid_argument("Invalid date format.");
         }
+        date = Date(date.day, date.month, date.year);
         return is;
     }
 };
@@ -85,13 +87,12 @@ private:
     bool isfavourite;
 public:
     //Конструктор от ФИО, номера и опционально даты(Порядок корявый, ИОФ, но пусть будет так)
-    Contact(string first_name_ ="", string middle_name_="", string last_name_="", string phone_number_="", Date birth_date_ = Date(1, 1, 1)) : first_name(first_name_), middle_name(middle_name_), last_name(last_name_), phone_number(phone_number_), birth_date(birth_date_), isfavourite(false) {
+    Contact(string first_name_ ="", string middle_name_="", string last_name_="", string phone_number_="", Date birth_date_ = Date()) : first_name(first_name_), middle_name(middle_name_), last_name(last_name_), phone_number(phone_number_), birth_date(birth_date_), isfavourite(false) {
         //Проверка на корректность формата номера(цифры+*#),сообщение об ошибке, выброс ошибки
         for (size_t i = 0; i < phone_number_.size(); ++i) {
             if (phone_number_[i] != '+' && phone_number_[i] != '*' && phone_number_[i] != '#' && (phone_number_[i] > '9' || phone_number_[i] < '0')) {
                 cout << "ERR:Invalid phone number.\n";
                 throw invalid_argument("Invalid phone number.");
-                break;
             }
         }
     }
@@ -127,16 +128,12 @@ public:
     }
     //Ввод/вывод
     friend ostream& operator << (ostream& os, const Contact& contact) {
-        os << contact.last_name << ' ' << contact.first_name << ' ' << contact.middle_name << ' ' << contact.phone_number << ' ' << contact.birth_date << ' ' << contact.isfavourite ? 1 : 0;
+        os << contact.first_name << ' ' << contact.middle_name << ' ' << contact.last_name << ' ' << contact.phone_number << ' ' << contact.birth_date << ' ' << contact.isfavourite;
         return os;
     }
     friend istream& operator >>(istream& is, Contact& contact) {
         contact.isfavourite = false;
-        is >> contact.last_name >> contact.first_name >> contact.middle_name >> contact.phone_number >> contact.birth_date >> contact.isfavourite;
-        if (contact.last_name.size() == 0 || contact.first_name.size() == 0 || contact.middle_name.size() == 0) {
-            cout << "ERR:Empty fields.\n";
-            throw invalid_argument("Empty fields.");
-        }
+        is >> contact.first_name >> contact.middle_name >> contact.last_name >> contact.phone_number >> contact.birth_date >> contact.isfavourite;
         return is;
     }
 };
@@ -146,49 +143,63 @@ public:
 class ContactsBook {
 private:
     vector<Contact> contacts;
-    void sortContacts() {
-        size_t n = contacts.size();
-        for (size_t i = 0; i < n - 1; ++i) {
-            for (size_t j = 0; j < n - i - 1; ++j) {
-                if (contacts[j + 1] < contacts[j]) {
-                    Contact temp = contacts[j+1];
-                    contacts[j + 1] = contacts[j];
-                    contacts[j] = temp;
-                }
+    //Бинарный поиск позиции нового контакта в контакной книжке
+    size_t binarySearch(Contact new_contact) {
+        size_t left = 0;
+        size_t right = contacts.size();
+        while (left < right) {
+            size_t mid = left + (right - left) / 2;
+            if (contacts[mid] < new_contact) {
+                left = mid + 1;
+            }
+            else {
+                right = mid;
             }
         }
+        return left;
     }
 public:
     //Единственное поле - вектор, поэтому конструктор от компилятора. 
 
     // 1) Создать новый контакт
     void addContact(Contact new_contact) {
-        contacts.push_back(new_contact);
-        sortContacts();
+        size_t pos = binarySearch(new_contact);
+        contacts.insert(contacts.begin() + pos, new_contact);
     }
 
     // 2) Изменить выбранный контакт
-    void editContact(int index, Contact updatedContact) {
+    void editContact(int index, Contact updated_contact) {
         if (index >= contacts.size() || index < 0) {
             cout << "ERR:Index out of range.\n";
             throw out_of_range("Index out of range.");
         }
-        contacts[index] = updatedContact;
-        sortContacts(); 
+        contacts.erase(contacts.begin() + index, contacts.begin() + index + 1);
+        size_t pos = binarySearch(updated_contact);
+        contacts.insert(contacts.begin() + pos, updated_contact);
     }
 
     // 3) Найти контакт по ФИО
-    long long findContactByFullName(const string& first_name, const string& middle_name, const string& last_name) const {
-        for (long long i = 0; i < contacts.size(); ++i) {
-            if (contacts[i].MatchesFullName(first_name, middle_name, last_name)) {
-                return i;
+    int findContactByFullName(const string& first_name, const string& middle_name, const string& last_name) const {
+        size_t left = 0;
+        size_t right = contacts.size();
+        while (left < right) {
+            size_t mid = left + (right - left) / 2;
+            const Contact& mid_contact = contacts[mid];
+            if (mid_contact.MatchesFullName(first_name, middle_name, last_name)) {
+                return mid;
+            }
+            if (mid_contact < Contact(first_name, middle_name, last_name)) {
+                left = mid + 1;
+            }
+            else {
+                right = mid;
             }
         }
         return -1;
     }
     // 4) Найти контакт по телефону
-    long long findContactByPhone(const string& phone) const {
-        for (long long i = 0; i < contacts.size(); ++i) {
+    int findContactByPhone(const string& phone) const {
+        for (int i = 0; i < contacts.size(); ++i) {
             if (contacts[i].MatchesPhone(phone)) {
                 return i;
             }
@@ -197,15 +208,22 @@ public:
     }
     // 5) Вывести все контакты на заданную букву
     void printContactsByLetter(char letter) const {
-        bool found = false;
-        for (size_t i = 0; i < contacts.size(); ++i) {
-            if (contacts[i].StartsWithLetter(letter)) {
-                std::cout << contacts[i] << endl;
-                found = true;
+        size_t left = 0;
+        size_t right = contacts.size();
+        while (left < right) {
+            size_t mid = left + (right - left) / 2;
+            if (contacts[mid].StartsWithLetter(letter)) {
+                right = mid;
+            }
+            else if (contacts[mid] < Contact("", "", string(1, letter))) {
+                left = mid + 1;
+            }
+            else {
+                right = mid;
             }
         }
-        if (!found) {
-            std::cout << "No contacts found starting with '" << letter << "'.\n";
+        for (size_t i = left; i < contacts.size() && contacts[i].StartsWithLetter(letter); ++i) {
+            cout << contacts[i] << endl;
         }
     }
     // 6) Узнать текущее число контактов
@@ -252,7 +270,7 @@ public:
         ofstream file(filename);
         if (!file.is_open()) {
             cout << "ERR:Cannot open file for writing: " << filename << endl;
-            throw;
+            throw std::invalid_argument("Cannot open file for writing");
         }
         file << contacts.size() << '\n'; 
         for (size_t i = 0; i < contacts.size(); ++i) {
@@ -266,7 +284,7 @@ public:
         ifstream file(filename);
         if (!file.is_open()) {
             cout << "ERR:Cannot open file for reading: " << filename << endl;
-            throw;
+            throw std::invalid_argument("Cannot open file for reading");
         }
         contacts.clear();
         size_t count;
@@ -277,35 +295,61 @@ public:
             if (file.fail()) {
                 cout << "ERR:Failed to read contact at line " << (i + 1) << endl;
                 file.close();
-                throw;
+                throw std::invalid_argument("Failed to read contact at line");
             }
-            contacts.push_back(contact);
+            size_t pos = binarySearch(contact);
+            contacts.insert(contacts.begin() + pos, contact);
         }
         file.close();
-        sortContacts();
         cout << "Contacts loaded from " << filename << " successfully." << endl;
     }
+
     //Вывод всего, в критериях не было но для удобаства добавил
     void printAll() const {
         for (size_t i = 0; i < contacts.size(); ++i) {
             cout << i << ": " << contacts[i] << endl;
         }
     }
+    void printContact(size_t index) const {
+            cout << contacts[index] << endl;
+    }
 };
 
 
 int main() {
     ContactsBook book;
-    book.addContact(Contact("Ivan", "Ivanovich", "Ivanov", "+79991234567", Date(15, 3, 1990)));
-    book.addContact(Contact("Alexander", "Sergeyevich", "Petrov", "+79999876543", Date(10, 7, 1985)));
-    book.addContact(Contact("Anna", "Michailovna", "Sidorova", "+79991112233", Date(22, 12, 1992)));
-    book.addToFavourites(0);
-    cout << "\n=== Favourites ===\n";
-    book.printFavourites();
-    book.saveToFile("contacts.txt");
-    ContactsBook book2;
-    book2.loadFromFile("contacts.txt");
-    cout << "\n=== Loaded contacts ===\n";
-    book2.printAll();
+    try {
+        Contact c1("Ivan", "Ivanovich", "Ivanov", "+79123456789", Date(15, 5, 1990));
+        Contact c2("Peter", "Petrovich", "Petrov", "+79223456780", Date(20, 8, 1985));
+        Contact c3("Anna", "Sergeyevna", "Sidorova", "+79334567890", Date(10, 1, 1992));
+        book.addContact(c1);
+        book.addContact(c2);
+        book.addContact(c3);
+        cout << book.getContactCount()<<endl;
+        cout << "All contacts:\n";
+        book.printAll();
+        cout << "\nContacts starting with 'I':\n";
+        book.printContactsByLetter('I');
+
+        cout << "\nFavourites:\n";
+        size_t idx = book.findContactByFullName("Ivan", "Ivanovich", "Ivanov");
+        if (idx != -1) {
+            book.addToFavourites(idx);
+        }
+        book.printFavourites();
+        book.editContact(book.findContactByPhone("+79334567890"), Contact("Anna", "Sergeyevna", "Frolova", "+79999999999", Date(10, 1, 1992)));
+        cout << "\nDeleting contact \n";
+        book.deleteContact(book.findContactByFullName("Ivan", "Ivanovich", "Ivanov"));
+        book.printAll();
+        cout << "Saving to file...\n";
+        book.saveToFile("contacts.txt");
+        cout << "Loading from file...\n";
+        ContactsBook book2;
+        book2.loadFromFile("contacts.txt");
+        book2.printAll();
+    }
+    catch (const std::exception& e) {
+        cout << "Exception: " << e.what() << '\n';
+    }
     return 0;
 }
