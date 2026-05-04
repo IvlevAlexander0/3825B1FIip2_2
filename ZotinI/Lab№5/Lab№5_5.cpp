@@ -6,12 +6,18 @@ using std::cin;
 using std::string;
 
 class Date {
-protected:
+private:
     unsigned day;
     unsigned month;
 
     bool prov(unsigned d, unsigned m) {
         if (d > 31 || m > 12 || d == 0 || m == 0) {
+            return false;
+        }
+        else if ((m == 4 || m == 6 || m == 9 || m == 11) && d > 30) {
+            return false;
+        }
+        else if (m == 2 && d > 28) {
             return false;
         }
         return true;
@@ -55,7 +61,7 @@ public:
 };
 
 class Time {
-protected:
+private:
     unsigned hour;
     unsigned minutes;
 
@@ -162,7 +168,7 @@ public:
         return i == count;
     }
 
-    void tofreeplaces(const string& zone, unsigned count, unsigned* rows_booked, unsigned* seats_booked) {
+    void tofreeplaces(unsigned count, unsigned* rows_booked, unsigned* seats_booked) {
         for (size_t i = 0; i < count; i++) {
             unsigned r = rows_booked[i] - 1;
             unsigned s = seats_booked[i] - 1;
@@ -230,18 +236,64 @@ private:
     size_t count;
     size_t hall_count = 10;
     unsigned cost;
+
+    
+
 public:
     Cinema(unsigned c = 200): count(0), hall_count(10), cost(c) {
         s = new Session[max_count];
     }
+    
+    Cinema(const Cinema& other) : count(other.count), cost(other.cost), hall_count(other.hall_count) {
+        s = new Session[max_count];
+        std::copy(other.s, other.s + max_count, s);
+    }
 
-    bool add(unsigned d, unsigned m, unsigned h, unsigned min, const string& film, unsigned hall, unsigned rows, unsigned seats) {
+    Cinema& operator=(const Cinema& other) {
+        if (this != &other) {
+            delete[] s;
+            s = new Session[max_count];
+            count = other.count;
+            hall_count = other.hall_count;
+            cost = other.cost;
+            for (size_t i = 0; i < count; i++) {
+                s[i] = other.s[i];
+            }
+        }
+        return *this;
+    }
+
+    int between(unsigned d1, unsigned m1, unsigned d2, unsigned m2) const {
+        int days[] = { 0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+        int total1 = d1;
+        for (unsigned i = 1; i < m1; i++) {
+            total1 += days[i];
+        }
+
+        int total2 = d2;
+        for (unsigned i = 1; i < m2; i++) {
+            total2 += days[i];
+        }
+
+        return total2 - total1;
+    }
+
+    void add(unsigned d, unsigned m, unsigned h, unsigned min, const string& film, unsigned hall, unsigned rows, unsigned seats) {
         if (count >= max_count || hall == 0 || hall > hall_count) {
-            return false;
+            return;
+        }
+        if (count == 0) {
+            s[count] = Session(d, m, h, min, film, hall, rows, seats, cost);
+            count++;
+            return;
+        }
+        int diff = between(s[0].getday(), s[0].getmonth(), d, m);
+        if (diff < 0 || diff > 30) {
+            cout << "Session date is outside the 30-day window\n";
+            return;
         }
         s[count] = Session(d, m, h, min, film, hall, rows, seats, cost);
         count++;
-        return true;
     }
 
     const Session& gets(size_t i) const {
@@ -255,21 +307,13 @@ public:
         return count;
     }
 
-    bool threeday(unsigned curd, unsigned curm, unsigned sessd, unsigned sessm) const {
-        int curtotal = curm * 30 + curd;
-        int sesstotal = sessm * 30 + sessd;
-        if (sesstotal - curtotal >= 0 && sesstotal - curtotal <= 3)
-            return true;
-        return false;
-    }
-
     void available(unsigned curh, unsigned curm, unsigned curd, unsigned curmonth) const {
         cout << "\n---- AVAILABLE SESSIONS ----" << '\n';
         Date curdate(curd, curmonth);
 
         for (size_t i = 0; i < count; i++) {
             Date sessiondate(s[i].getday(), s[i].getmonth());
-            if (!threeday(curd, curmonth, s[i].getday(), s[i].getmonth())) {
+            if (between(curd, curmonth, s[i].getday(), s[i].getmonth()) > 3 || between(curd, curmonth, s[i].getday(), s[i].getmonth()) < 0) {
                 continue;
             }
             if (curdate < sessiondate || curdate == sessiondate) {
@@ -295,9 +339,11 @@ public:
     }
 };
 
-class Ticket_office : public Date, public Time {
+class Ticket_office {
 private: 
     Cinema* cinema;
+    Date currdate;
+    Time currtime;
     unsigned sold;
     unsigned allcost;
     int current_index;
@@ -311,6 +357,7 @@ private:
         unsigned hall;
         string zone;
         unsigned count;
+        request() : day(0), month(0), hour(0), min(0), hall(0), count(0) {}
     };
 
     struct transaction {
@@ -321,6 +368,12 @@ private:
         unsigned rows[50];
         unsigned seats[50];
         bool isvalid;
+        transaction() : index(0), count(0), cost(0), isvalid(false) {
+            for (int i = 0; i < 50; i++) {
+                rows[i] = 0;
+                seats[i] = 0;
+            }
+        }
     };
 
     transaction last;
@@ -330,7 +383,8 @@ private:
         cout << "Enter session date (day month): ";
         while (true) {
             if (cin >> d >> m) {
-                if (prov(d, m)) {
+                Date a(d, m);
+                if (a.getday() == d && a.getmonth() == m) {
                     return;
                 }
                 cout << "Invalid date! Enter day (1-31), month (1-12): ";
@@ -347,7 +401,7 @@ private:
         cout << "Enter session time (hour minute): ";
         while (true) {
             if (cin >> h >> min) {
-                if (prov_time(h, min)) {
+                if (h <= 23 && min <= 59) {
                     return;
                 }
                 cout << "Invalid time! Enter hour (0-23), minute (0-59): ";
@@ -445,12 +499,16 @@ private:
     }
 
 public:
-    Ticket_office(Cinema* c, unsigned d, unsigned m, unsigned h, unsigned min): Date(d, m), Time(h, min), cinema(c), sold(0), allcost(0), current_index(-1) {
+    Ticket_office(Cinema* c, unsigned d, unsigned m, unsigned h, unsigned min): currdate(d, m), currtime(h, min), cinema(c), sold(0), allcost(0), current_index(-1) {
             last.isvalid = false;
     }
 
     void accept() {
-        cinema->available(hour, minutes, day, month);
+        if (last.isvalid) {
+            cout << "Warning: Previous reservation will be lost!\n";
+        }
+        now = request();
+        cinema->available(currtime.gethours(), currtime.getminutes(), currdate.getday(), currdate.getmonth());
         input_date(now.day, now.month);
         input_time(now.hour, now.min);
         input_name(now.film);
@@ -470,15 +528,17 @@ public:
             input_zone(now.zone);
         }
 
-        if (!cinema->gets(current_index).cansell(hour, minutes)) {
+        if (!cinema->gets(current_index).cansell(currtime.gethours(), currtime.getminutes())) {
             cout << "Tickets for this session are no longer available\n";
             now.count = 0;
+            current_index = -1;
             return;
         }
 
-        if (!cinema->threeday(day, month, now.day, now.month)) {
+        if (cinema->between(currdate.getday(), currdate.getmonth(), now.day, now.month) > 3 || cinema->between(currdate.getday(), currdate.getmonth(), now.day, now.month) < 0) {
             cout << "Tickets can only be sold within 3 days from current date\n";
             now.count = 0;
+            current_index = -1;
             return;
         }
         unsigned free_places = cinema->gets(current_index).free_count(now.zone);
@@ -519,6 +579,10 @@ public:
     void reserve() {
         if (now.count == 0 || current_index == -1) {
             cout << "Please enter customer data first.\n";
+            return;
+        }
+        if (last.isvalid) {
+            cout << "Have an active reservation.\n";
             return;
         }
 
@@ -581,7 +645,7 @@ public:
         cout << "Amount: " << last.cost << " rub\n";
 
         Session& sess = cinema->gets_id(last.index);
-        sess.tofreeplaces(last.zone, last.count, last.rows, last.seats);
+        sess.tofreeplaces(last.count, last.rows, last.seats);
 
         if (sold >= last.count) {
             sold -= last.count;
@@ -616,6 +680,8 @@ public:
         cout << "\nTotal tickets: " << last.count;
         cout << "\nTotal amount: " << total_cost << " rub\n";
         cout << "----------------------------\n";
+        last.isvalid = false;
+        now = request();
         current_index = -1;
     }
 
@@ -634,9 +700,9 @@ int main() {
     c.add(16, 11, 16, 30, "The Matrix", 3, 10, 15);
     c.add(16, 11, 21, 0, "Interstellar", 5, 10, 15);
 
-    c.add(17, 12, 8, 30, "Inception", 2, 8, 12);
-    c.add(17, 12, 13, 0, "Oppenheimer", 1, 10, 15);
-    c.add(17, 12, 22, 0, "Dune 2", 4, 10, 15);
+    c.add(17, 11, 8, 30, "Inception", 2, 8, 12);
+    c.add(17, 11, 13, 0, "Oppenheimer", 1, 10, 15);
+    c.add(17, 11, 22, 0, "Dune 2", 4, 10, 15);
     Ticket_office office(&c, 15, 11, 0, 0);
     int s;
 
