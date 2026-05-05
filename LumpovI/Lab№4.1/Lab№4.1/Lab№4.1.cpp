@@ -18,7 +18,6 @@ struct Observation {
     Date date;
     Time time;
     double temperature;
-    bool isSet;
 };
 
 class Thermometer {
@@ -89,14 +88,7 @@ private:
         return result;
     }
 
-public:
-    Thermometer() {
-        startDate.day = 1;
-        startDate.month = 1;
-        startDate.year = 2000;
-        startTime.hour = 0;
-        totalDays = MAX_DAYS;
-
+    void allocateHistory() {
         history = new Observation * *[totalDays];
 
         for (int i = 0; i < totalDays; ++i) {
@@ -108,16 +100,81 @@ public:
         }
     }
 
-    ~Thermometer() {
+    void deallocateHistory() {
+        if (history == nullptr) return;
+
         for (int i = 0; i < totalDays; ++i) {
-            for (int j = 0; j < HOURS_PER_DAY; ++j) {
-                if (history[i][j] != nullptr) {
-                    delete history[i][j];
+            if (history[i] != nullptr) {
+                for (int j = 0; j < HOURS_PER_DAY; ++j) {
+                    if (history[i][j] != nullptr) {
+                        delete history[i][j];
+                        history[i][j] = nullptr;
+                    }
                 }
+                delete[] history[i];
+                history[i] = nullptr;
             }
-            delete[] history[i];
         }
         delete[] history;
+        history = nullptr;
+    }
+
+    void copyFrom(const Thermometer& other) {
+        startDate = other.startDate;
+        startTime = other.startTime;
+        totalDays = other.totalDays;
+
+        allocateHistory();
+
+        for (int i = 0; i < totalDays; ++i) {
+            for (int j = 0; j < HOURS_PER_DAY; ++j) {
+                if (other.history[i][j] != nullptr) {
+                    history[i][j] = new Observation;
+                    history[i][j]->date = other.history[i][j]->date;
+                    history[i][j]->time = other.history[i][j]->time;
+                    history[i][j]->temperature = other.history[i][j]->temperature;
+                }
+                else {
+                    history[i][j] = nullptr;
+                }
+            }
+        }
+    }
+
+public:
+    Thermometer(): startDate({ 1, 1, 2024 }), startTime({ 0 }), totalDays(MAX_DAYS), history(nullptr) { allocateHistory(); }
+
+    Thermometer(const Date& date, const Time& time): startDate(date), startTime(time), totalDays(MAX_DAYS), history(nullptr){
+        if (!isValidDate(date) || !isValidTime(time)) {
+            std::cout << "Error: inccorect date or time\n " << "Value was sat by defult (1 Jan 2024, 0:00).\n\n";
+            startDate.day = 1;
+            startDate.month = 1;
+            startDate.year = 2024;
+            startTime.hour = 0;
+        }
+
+        allocateHistory();
+    }
+
+
+    ~Thermometer() {
+        deallocateHistory();
+    }
+
+    Thermometer(const Thermometer& other): history(nullptr), totalDays(0){
+        copyFrom(other);
+    }
+
+    Thermometer& operator=(const Thermometer& other) {
+        if (this == &other) {
+            return *this;
+        }
+
+        deallocateHistory();
+
+        copyFrom(other);
+
+        return *this;
     }
 
     void setStartDateTime() {
@@ -139,17 +196,14 @@ public:
             return;
         }
 
-        for (int i = 0; i < totalDays; ++i) {
-            for (int j = 0; j < HOURS_PER_DAY; ++j) {
-                if (history[i][j] != nullptr) {
-                    delete history[i][j];
-                    history[i][j] = nullptr;
-                }
-            }
-        }
+        deallocateHistory();
 
         startDate = date;
         startTime = time;
+
+        allocateHistory();
+
+        std::cout << "Start date and time were sat!\n\n";
     }
 
     void getStartDateTime() const {
@@ -197,13 +251,13 @@ public:
 
         if (history[dayIndex][hourIndex] != nullptr) {
             delete history[dayIndex][hourIndex];
+            std::cout << "Old observation was updated\n" << std::endl;
         }
 
         Observation* obs = new Observation;
         obs->date = date;
         obs->time = time;
         obs->temperature = temperature;
-        obs->isSet = true;
 
         history[dayIndex][hourIndex] = obs;
         std::cout << "Observation was added\n" << std::endl;
@@ -277,7 +331,6 @@ public:
             obs->date = date;
             obs->time = t;
             obs->temperature = temperatures[hour];
-            obs->isSet = true;
 
             history[dayIndex][hour] = obs;
         }
@@ -449,17 +502,12 @@ public:
             return;
         }
 
-        for (int i = 0; i < totalDays; ++i) {
-            for (int j = 0; j < HOURS_PER_DAY; ++j) {
-                if (history[i][j] != nullptr) {
-                    delete history[i][j];
-                    history[i][j] = nullptr;
-                }
-            }
-        }
+        deallocateHistory();
 
         file >> startDate.day >> startDate.month >> startDate.year;
         file >> startTime.hour;
+
+        allocateHistory();
 
         int totalObs;
         file >> totalObs;
@@ -493,7 +541,6 @@ public:
             obs->date = d;
             obs->time = t;
             obs->temperature = temp;
-            obs->isSet = true;
 
             history[dayIndex][hourIndex] = obs;
         }
